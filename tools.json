@@ -1,0 +1,216 @@
+[
+ {
+  "name": "courses",
+  "description": "List the student's Canvas courses: id, code, name, term.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "upcoming",
+  "description": "Everything due from today across all Canvas courses: title, course, due (UTC), submitted. Start here for 'what is due?'.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "mirror",
+  "description": "Download a whole Canvas course (modules, pages, assignments with rubrics, announcements, discussions, files) to disk. course='all' mirrors every course.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "course": {
+     "type": "string"
+    },
+    "out": {
+     "type": "string"
+    },
+    "files": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "course"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "canvas_get",
+  "description": "Raw Canvas REST GET with pagination, e.g. path='courses/123/assignments'. params is a JSON object of query parameters.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "path": {
+     "type": "string"
+    },
+    "params": {
+     "type": "object"
+    }
+   },
+   "required": [
+    "path"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "assignment",
+  "description": "One Canvas assignment with description and rubric as plain text.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "course": {
+     "type": "integer"
+    },
+    "assignment": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "course",
+    "assignment"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "login_check",
+  "description": "Which SSO sites (Canvas, SharePoint, Ladok) the agent browser is logged in to.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "page",
+  "description": "Rendered text of any page, read through the student's logged-in browser (SharePoint, Ladok, Inspera, intranet).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "url": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "url"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "fetch",
+  "description": "JSON/text fetch executed inside `origin` so the site's own cookies apply. Use for internal APIs (Ladok student API, SharePoint REST).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "url": {
+     "type": "string"
+    },
+    "origin": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "url",
+    "origin"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "sharepoint_download",
+  "description": "Download a SharePoint share link (/:b:/ or /:u:/ style) to a local file; returns path, size, type.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "share_url": {
+     "type": "string"
+    },
+    "out": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "share_url"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "programme",
+  "description": "Map the whole SHH nursing programme: every course with its kursplan and kurslitteraturlista downloaded and verified by the course code inside each file.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "out": {
+     "type": "string"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "timeedit",
+  "description": "Bookings from a TimeEdit schedule link (the .html URL the student copies from TimeEdit). Returns date, start, end and the booking columns. Note: a link covers only the period it was created for.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "url": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "url"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "pubmed",
+  "description": "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "query": {
+     "type": "string"
+    },
+    "max": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "query"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "libris",
+  "description": "Search Libris (Swedish union catalogue) for books: title, author, year, publisher, ISBN. Use to verify a course-book reference.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "query": {
+     "type": "string"
+    },
+    "max": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "query"
+   ],
+   "additionalProperties": false
+  }
+ }
+]

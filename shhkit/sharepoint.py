@@ -1,63 +1,62 @@
-"""Enumerate and download files from an SHH SharePoint document library.
+"""SharePoint share links -> real file bytes, through the logged-in agent browser.
 
-Uses the SharePoint REST API through the logged-in browser (`shhkit.browser`), paging
-via odata.nextLink. Library items are the reliable route: the folder endpoints answer
-empty at the root even when the library holds >1000 files.
+SHH publishes kursplaner, litteraturlistor and the utbildningsplan as tenant-restricted
+share links (`https://<tenant>.sharepoint.com/:b:/s/<site>/<docid>?e=...`). A plain GET
+returns the viewer or a login page. `download.aspx?share=<docid>`, fetched from inside
+the site's own origin with the user's cookies, returns the file itself.
 
-    from shhkit import sharepoint as sp
-    files = sp.list_files("742ee806-0cff-4a92-aad8-afc2b8ed565b")
-    sp.save(files[0], "~/courses/programme/x.pdf")
+Walking document libraries over REST is not offered: SHH answers AccessDenied for
+students on folder endpoints, so share links are the supported route.
 """
-import json
 import pathlib
-import urllib.parse
+import re
 
 from . import browser
 
-SITE = "https://shh365.sharepoint.com/sites/Information_SHH_hemsida2"
-ORIGIN = "https://shh365.sharepoint.com/sites/Minasidor-Student"
-MAIN_LIBRARY = "742ee806-0cff-4a92-aad8-afc2b8ed565b"  # "Delade dokument", ~1100 files
+SHARE_RE = re.compile(r"https://([^/]+)/:([a-z]):/[sr]/([^/]+)/([^?]+)")
 
 
-def api(path):
-    """GET an API path (absolute or starting with '/_api'). Returns a dict."""
-    url = path if path.startswith("http") else SITE + path
-    r = browser.fetch(url, ORIGIN)
-    b = r.get("body")
-    if isinstance(b, dict):
-        return b
-    try:
-        return json.loads(b)
-    except (TypeError, ValueError):
-        return {"_raw": str(b)[:300], "_status": r.get("status")}
+def share_to_download(share):
+    """Return (download_url, origin) for a share link, or (None, None)."""
+    m = SHARE_RE.match(share)
+    if not m:
+        return None, None
+    host, _kind, site, docid = m.groups()
+    origin = f"https://{host}/sites/{site}/"
+    return f"{origin}_layouts/15/download.aspx?share={docid}", origin
 
 
-def list_files(list_id=MAIN_LIBRARY, page=1000, max_pages=20):
-    """All files and folders in a library: [{name, path, type, size}]."""
-    url = (f"/_api/web/lists(guid'{list_id}')/items"
-           f"?$select=FileRef,FileLeafRef,FSObjType,File/Length&$expand=File&$top={page}")
-    out = []
-    for _ in range(max_pages):
-        d = api(url)
-        for it in d.get("value", []):
-            out.append({"name": it.get("FileLeafRef"),
-                        "path": urllib.parse.unquote(it.get("FileRef") or ""),
-                        "type": "folder" if int(it.get("FSObjType") or 0) else "file",
-                        "size": (it.get("File") or {}).get("Length")})
-        nxt = d.get("odata.nextLink")
-        if not nxt:
-            break
-        url = nxt
-    return out
+def sniff(b):
+    if b[:4] == b"%PDF":
+        return "pdf"
+    if b[:2] == b"PK":
+        return "docx"
+    if b.lstrip()[:1] == b"<":
+        return "html"
+    return "bin"
 
 
-def file_url(server_relative):
-    q = urllib.parse.quote(server_relative)
-    return f"{SITE}/_api/web/GetFileByServerRelativeUrl('{q}')/$value"
+def fetch_share(share):
+    """Return (bytes, ext) or (None, None)."""
+    url, origin = share_to_download(share)
+    if not url:
+        return None, None
+    r = browser.fetch_binary(url, origin) or {}
+    b = r.get("bytes") or b""
+    if r.get("status") != 200 or not b:
+        return None, None
+    return b, sniff(b)
 
 
-def save(entry, dest, timeout=120):
-    """Download one entry (as returned by list_files) to dest. Returns path or None."""
-    from . import download
-    raw = download.download(file_url(entry["path"]), "~/courses/programme/raw", timeout=timeout)
-    return download.move(raw, dest) if raw else None
+def save_share(share, out):
+    """Download a share link to `out` (a file path, or a dir to auto-name in)."""
+    b, ext = fetch_share(share)
+    if not b:
+        return {"ok": False, "share": share, "error": "download failed (logged in? link valid?)"}
+    out = pathlib.Path(out).expanduser()
+    if out.is_dir() or not out.suffix:
+        out.mkdir(parents=True, exist_ok=True)
+        out = out / f"{SHARE_RE.match(share).group(4)[:24]}.{ext}"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(b)
+    return {"ok": True, "path": str(out), "bytes": len(b), "type": ext}

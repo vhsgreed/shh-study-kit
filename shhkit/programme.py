@@ -18,6 +18,7 @@ import re
 import subprocess
 
 from . import browser
+from .sharepoint import fetch_share
 
 LANDING = "https://www.shh.se/sv/utbildningar/grundniva/sjukskoterskeprogrammet-kurser/"
 OUT = pathlib.Path("~/courses/programme").expanduser()
@@ -57,28 +58,6 @@ def _courses_from_text(text):
     return out
 
 
-def share_to_download(share):
-    m = re.match(r"https://([^/]+)/:([bu]):/s/([^/]+)/([^?]+)", share)
-    if not m:
-        return None, None
-    host, _kind, site, docid = m.groups()
-    site_root = f"https://{host}/sites/{site}/"
-    return f"{site_root}_layouts/15/download.aspx?share={docid}", site_root
-
-
-def fetch_share(share):
-    url, origin = share_to_download(share)
-    if not url:
-        return None, None
-    r = browser.fetch_binary(url, origin)
-    b = (r or {}).get("bytes") or b""
-    if not b or r.get("status") != 200:
-        return None, None
-    ext = ("pdf" if b[:4] == b"%PDF" else "docx" if b[:2] == b"PK"
-           else "html" if b.lstrip()[:1] == b"<" else "bin")
-    return b, ext
-
-
 def doc_text(path):
     p = pathlib.Path(path)
     if p.suffix in (".html", ".htm"):
@@ -104,8 +83,10 @@ def doc_text(path):
 KNOWN_CODES = set()
 
 
-def build():
-    global KNOWN_CODES
+def build(out=None):
+    global KNOWN_CODES, OUT
+    if out:
+        OUT = pathlib.Path(out).expanduser()
     t = browser.new_tab(LANDING)
     try:
         anchors, text = asyncio.run(_scrape(t))

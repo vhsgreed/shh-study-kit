@@ -1,0 +1,203 @@
+"""One tool registry for every surface: CLI, MCP server, tools.json manifest.
+
+Each tool is a plain function with a JSON-schema'd signature. Add a tool here and it
+appears in `python -m shhkit <name>`, in the MCP server, and in `tools.json`.
+All tools are read-only toward the school's systems; the only writes are local files.
+"""
+import json
+import pathlib
+import urllib.parse
+import urllib.request
+
+TOOLS = {}
+
+
+def tool(name, description, properties=None, required=()):
+    def wrap(fn):
+        TOOLS[name] = {
+            "name": name,
+            "description": description,
+            "inputSchema": {"type": "object", "properties": properties or {},
+                            "required": list(required), "additionalProperties": False},
+            "fn": fn,
+        }
+        return fn
+    return wrap
+
+
+S = {"type": "string"}
+I = {"type": "integer"}
+B = {"type": "boolean"}
+
+
+# ---------------------------------------------------------------- Canvas (token)
+
+@tool("courses", "List the student's Canvas courses: id, code, name, term.")
+def courses():
+    from . import canvas
+    return [{"id": c["id"], "code": c.get("course_code"), "name": c.get("name"),
+             "term": (c.get("term") or {}).get("name")} for c in canvas.courses()]
+
+
+@tool("upcoming", "Everything due from today across all Canvas courses: title, course, "
+      "due (UTC), submitted. Start here for 'what is due?'.")
+def upcoming():
+    from . import canvas
+    out = []
+    for i in canvas.upcoming():
+        sub = i.get("submissions")
+        out.append({"course": i.get("context_name"), "type": i.get("plannable_type"),
+                    "title": ((i.get("plannable") or {}).get("title") or "").strip(),
+                    "due_utc": i.get("plannable_date"),
+                    "submitted": sub.get("submitted") if isinstance(sub, dict) else None})
+    return out
+
+
+@tool("mirror", "Download a whole Canvas course (modules, pages, assignments with rubrics, "
+      "announcements, discussions, files) to disk. course='all' mirrors every course.",
+      {"course": S, "out": S, "files": B}, ["course"])
+def mirror(course, out="~/courses/canvas", files=True):
+    from . import canvas
+    base = pathlib.Path(out).expanduser()
+    ids = [c["id"] for c in canvas.courses()] if str(course) == "all" else [int(course)]
+    return [canvas.mirror(i, base / str(i), files=files) for i in ids]
+
+
+@tool("canvas_get", "Raw Canvas REST GET with pagination, e.g. path='courses/123/assignments'. "
+      "params is a JSON object of query parameters.", {"path": S, "params": {"type": "object"}}, ["path"])
+def canvas_get(path, params=None):
+    from . import canvas
+    return canvas.get(path, **(params or {}))
+
+
+@tool("assignment", "One Canvas assignment with description and rubric as plain text.",
+      {"course": I, "assignment": I}, ["course", "assignment"])
+def assignment(course, assignment):
+    import html
+    import re
+    from . import canvas
+    a = canvas.get(f"courses/{course}/assignments/{assignment}")
+    desc = html.unescape(re.sub(r"<[^>]+>", " ", a.get("description") or ""))
+    return {"name": a.get("name"), "due_utc": a.get("due_at"), "points": a.get("points_possible"),
+            "description": re.sub(r"\s+", " ", desc).strip(),
+            "rubric": [{"criterion": r.get("description"), "long": r.get("long_description"),
+                        "ratings": [x.get("description") for x in r.get("ratings", [])]}
+                       for r in a.get("rubric") or []]}
+
+
+# ------------------------------------------------------- SSO browser (CDP)
+
+@tool("login_check", "Which SSO sites (Canvas, SharePoint, Ladok) the agent browser is logged in to.")
+def login_check():
+    from . import browser
+    sites = ("https://shh.instructure.com/", "https://shh365.sharepoint.com/",
+             "https://www.student.ladok.se/student/app/studentwebb/")
+    out = {}
+    for u in sites:
+        ok, landed = browser.logged_in(u)
+        out[u] = {"logged_in": ok, "landed": landed[:120]}
+    return out
+
+
+@tool("page", "Rendered text of any page, read through the student's logged-in browser "
+      "(SharePoint, Ladok, Inspera, intranet).", {"url": S}, ["url"])
+def page(url):
+    from . import browser
+    return browser.page(url)
+
+
+@tool("fetch", "JSON/text fetch executed inside `origin` so the site's own cookies apply. "
+      "Use for internal APIs (Ladok student API, SharePoint REST).", {"url": S, "origin": S}, ["url", "origin"])
+def fetch(url, origin):
+    from . import browser
+    return browser.fetch(url, origin)
+
+
+@tool("sharepoint_download", "Download a SharePoint share link (/:b:/ or /:u:/ style) to a "
+      "local file; returns path, size, type.", {"share_url": S, "out": S}, ["share_url"])
+def sharepoint_download(share_url, out="~/courses/downloads"):
+    from . import sharepoint
+    return sharepoint.save_share(share_url, out)
+
+
+# ---------------------------------------------------------- Programme map
+
+@tool("programme", "Map the whole SHH nursing programme: every course with its kursplan and "
+      "kurslitteraturlista downloaded and verified by the course code inside each file.",
+      {"out": S})
+def programme(out="~/courses/programme"):
+    from . import programme as pr
+    cs, docs = pr.build(out)
+    md = pr.report(cs)
+    (pathlib.Path(out).expanduser() / "KURSKARTA.md").write_text(md)
+    return {"courses": [{"code": c["code"], "name": c["name"], "kursplan": c.get("kursplan_file"),
+                         "litteratur": c.get("litteratur_file")} for c in cs],
+            "errors": [d for d in docs if d.get("error")]}
+
+
+# ---------------------------------------------------------- TimeEdit (public)
+
+@tool("timeedit", "Bookings from a TimeEdit schedule link (the .html URL the student copies "
+      "from TimeEdit). Returns date, start, end and the booking columns. Note: a link covers "
+      "only the period it was created for.", {"url": S}, ["url"])
+def timeedit(url):
+    j = url.split("?")[0].rsplit(".", 1)[0] + ".json"
+    with urllib.request.urlopen(j, timeout=30) as r:
+        d = json.load(r)
+    head = d.get("columnheaders", [])
+    return [{"date": x["startdate"], "start": x["starttime"], "end": x["endtime"],
+             **{(head[k] if k < len(head) else f"col{k}") or f"col{k}": v
+                for k, v in enumerate(x.get("columns", []))}}
+            for x in d.get("reservations", [])]
+
+
+# ---------------------------------------------------------- Open research APIs
+
+@tool("pubmed", "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
+      {"query": S, "max": I}, ["query"])
+def pubmed(query, max=10):
+    import urllib.parse
+    E = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+    q = urllib.parse.urlencode({"db": "pubmed", "term": query, "retmax": max, "retmode": "json"})
+    with urllib.request.urlopen(E + "esearch.fcgi?" + q, timeout=30) as r:
+        ids = json.load(r)["esearchresult"]["idlist"]
+    if not ids:
+        return []
+    q = urllib.parse.urlencode({"db": "pubmed", "id": ",".join(ids), "retmode": "json"})
+    with urllib.request.urlopen(E + "esummary.fcgi?" + q, timeout=30) as r:
+        res = json.load(r)["result"]
+    out = []
+    for i in ids:
+        x = res.get(i, {})
+        doi = next((a["value"] for a in x.get("articleids", []) if a.get("idtype") == "doi"), None)
+        out.append({"pmid": i, "title": x.get("title"), "journal": x.get("fulljournalname"),
+                    "year": (x.get("pubdate") or "")[:4], "doi": doi,
+                    "authors": [a.get("name") for a in x.get("authors", [])]})
+    return out
+
+
+@tool("libris", "Search Libris (Swedish union catalogue) for books: title, author, year, "
+      "publisher, ISBN. Use to verify a course-book reference.", {"query": S, "max": I}, ["query"])
+def libris(query, max=10):
+    import urllib.parse
+    q = urllib.parse.urlencode({"query": query, "format": "json", "n": max})
+    with urllib.request.urlopen("https://libris.kb.se/xsearch?" + q, timeout=30) as r:
+        d = json.load(r)
+    out = []
+    for x in d.get("xsearch", {}).get("list", []):
+        out.append({"title": x.get("title"), "creator": x.get("creator"), "date": x.get("date"),
+                    "publisher": x.get("publisher"), "isbn": x.get("isbn"),
+                    "type": x.get("type"), "url": x.get("identifier")})
+    return out
+
+
+# ---------------------------------------------------------- dispatch
+
+def call(name, args=None):
+    if name not in TOOLS:
+        raise KeyError(f"unknown tool {name!r}; have {sorted(TOOLS)}")
+    return TOOLS[name]["fn"](**(args or {}))
+
+
+def manifest():
+    return [{k: v for k, v in t.items() if k != "fn"} for t in TOOLS.values()]
