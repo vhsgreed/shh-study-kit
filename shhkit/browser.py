@@ -65,9 +65,10 @@ def page(url, wait=4.0, text=True):
 
     async def steps(call):
         await call("Page.enable")
+        await call("Page.navigate", url=url)
         for _ in range(int(wait * 4)):
             await asyncio.sleep(0.25)
-            if await _eval(call, "document.readyState") == "complete":
+            if await _eval(call, "document.readyState") == "complete" and (await _eval(call, "location.href")) != "about:blank":
                 break
         await asyncio.sleep(1.0)  # SPAs (SharePoint, Ladok) render after load
         body = "document.body.innerText" if text else "document.documentElement.outerHTML"
@@ -106,6 +107,31 @@ def fetch(url, origin, as_json=True):
 
 
 LOGIN_MARKERS = ("login.microsoftonline.com", "/login", "wayf", "discovery", "seamlessaccess")
+
+
+def fetch_binary(url, origin):
+    """Fetch bytes with the site's cookies. SharePoint serves binary only to a fetch inside
+    its own origin, so this goes through arrayBuffer -> base64 -> Python."""
+    t = new_tab(origin)
+
+    async def steps(call):
+        await call("Page.enable")
+        await asyncio.sleep(3)
+        js = (f"fetch({json.dumps(url)},{{credentials:'include'}}).then(async r=>{{"
+              "const b=new Uint8Array(await r.arrayBuffer());let s='';"
+              "for(let i=0;i<b.length;i+=8192)s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));"
+              "return {status:r.status,type:r.headers.get('content-type'),b64:btoa(s)};})")
+        return await _eval(call, js)
+
+    try:
+        r = asyncio.run(_session(t["webSocketDebuggerUrl"], steps))
+    finally:
+        close_tab(t["id"])
+    if r and r.get("b64"):
+        import base64
+        r["bytes"] = base64.b64decode(r["b64"])
+        del r["b64"]
+    return r
 
 
 def logged_in(url):

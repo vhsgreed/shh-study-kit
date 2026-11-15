@@ -26,3 +26,13 @@ python -m shhkit upcoming
 ```
 
 No license yet: all rights reserved for now.
+
+## What is wired (2026-11-15)
+
+| Part | State |
+|---|---|
+| Canvas REST (`shhkit.canvas`) | working: courses, planner, full course mirror (pages via module items, files) |
+| SSO browser bridge (`shhkit.browser`) | working: `page`, `fetch`, `fetch_binary`, `login-check` over CDP |
+| SharePoint (`shhkit.sharepoint`) | share links resolve via `download.aspx?share=<docid>`; library walking is permission-blocked |
+| Programme map (`shhkit.programme`) | working: all 21 courses of the SHH nursing programme with kursplan + kurslitteraturlista downloaded |
+| TimeEdit / Ladok adapters | not built; TimeEdit guide JSON is readable, date-range queries on that guide return nothing |
