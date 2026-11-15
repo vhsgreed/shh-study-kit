@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+# course mirrors and anything personal never go in the repo
+courses/
+mirror/
+*.token
+.secrets/
