@@ -1,38 +1,64 @@
 # shh-study-kit
 
-Agent-first tooling that lets an AI agent read a student's own course systems:
-Canvas (REST API), and SSO-walled sites (SharePoint, Ladok, Inspera, library) through a
-logged-in browser over the Chrome DevTools Protocol.
-
-Built for Sophiahemmet Högskola (nursing) and usable at any Canvas school.
-The agent instructions live in [`skill/SKILL.md`](skill/SKILL.md); drop that folder into
-your agent's skills directory (Hermes, Claude Code, any SKILL.md-aware agent).
-
-## Status
-| Part | State |
-|---|---|
-| Canvas: courses, upcoming, mirror, raw GET | working (tested against SHH, 3 courses) |
-| Browser bridge: page, fetch, login-check | written; tested once logged in |
-| Ladok, SharePoint, Inspera, library adapters | planned |
-
-## Requirements
-Python 3.10+. Canvas part is stdlib only. Browser part needs `websockets` and a Chrome
-started with `--remote-debugging-port`.
+**Give your agent the student's whole university, read-only.** Canvas, SharePoint, Ladok,
+TimeEdit, PubMed and Libris, as 13 tools behind one MCP server. Built for nursing students
+at Sophiahemmet Högskola. The Canvas half works at any Canvas school.
 
 ```bash
-echo "<token>" > ~/.secrets/CANVAS_TOKEN && chmod 600 ~/.secrets/CANVAS_TOKEN
-python -m shhkit courses
-python -m shhkit upcoming
+claude mcp add shhkit -- python3 -m shhkit.mcp      # Claude Code
+codex mcp add shhkit -- python3 -m shhkit.mcp       # Codex
+# Hermes, Cursor, anything MCP: command `python3 -m shhkit.mcp`, cwd = this repo
 ```
 
-No license yet: all rights reserved for now.
+Then ask your agent "what is due this week?" and let it work.
 
-## What is wired (2026-11-15)
+## For agents
+- **Start with [`skill/SKILL.md`](skill/SKILL.md).** It is written for you: tool table,
+  rules, and the pitfalls that cost us an afternoon.
+- **Schemas:** [`tools.json`](tools.json) (MCP `inputSchema` format, regenerate with
+  `python -m shhkit manifest > tools.json`).
+- **CLI fallback:** `python -m shhkit <tool> key=value ...`, JSON on stdout, errors on stderr.
+- **Extend:** add one decorated function in [`shhkit/tools.py`](shhkit/tools.py). It shows up
+  in the CLI, the MCP server and the manifest at once. See [`AGENTS.md`](AGENTS.md).
 
-| Part | State |
-|---|---|
-| Canvas REST (`shhkit.canvas`) | working: courses, planner, full course mirror (pages via module items, files) |
-| SSO browser bridge (`shhkit.browser`) | working: `page`, `fetch`, `fetch_binary`, `login-check` over CDP |
-| SharePoint (`shhkit.sharepoint`) | share links resolve via `download.aspx?share=<docid>`; library walking is permission-blocked |
-| Programme map (`shhkit.programme`) | working: all 21 courses of the SHH nursing programme with kursplan + kurslitteraturlista downloaded |
-| TimeEdit / Ladok adapters | not built; TimeEdit guide JSON is readable, date-range queries on that guide return nothing |
+## Tools
+| Tool | Source | Auth |
+|---|---|---|
+| `upcoming`, `courses`, `assignment`, `mirror`, `canvas_get` | Canvas REST | personal access token |
+| `login_check`, `page`, `fetch` | any SSO site | logged-in agent browser (CDP) |
+| `sharepoint_download`, `programme` | SharePoint, shh.se | logged-in agent browser |
+| `timeedit` | TimeEdit | none |
+| `pubmed`, `libris` | NCBI E-utilities, Libris | none |
+
+All tested live against SHH on 2026-11-15: 3 Canvas courses mirrored, 21 of 21 programme
+courses mapped with kursplan and litteraturlista, MCP handshake and tool calls verified.
+
+## Setup
+```bash
+git clone https://github.com/vhsgreed/shh-study-kit && cd shh-study-kit
+pip install websockets          # only for the browser tools; the rest is stdlib
+echo "<canvas token>" > ~/.secrets/CANVAS_TOKEN && chmod 600 ~/.secrets/CANVAS_TOKEN
+# browser tools: a separate Chrome profile with CDP, log in once by hand
+google-chrome --user-data-dir=$HOME/.config/shhkit-chrome --remote-debugging-port=9233
+```
+Other schools: `export CANVAS_BASE=https://<school>.instructure.com`.
+
+## Ground rules
+Read-only toward the school. No login automation: the human logs in, the agent reads. Course
+material is copyrighted; mirrors stay on your disk and out of git (`.gitignore` covers it).
+
+## License
+MIT. Do what you like; no warranty.
+
+---
+
+<sub>
+
+**In honour of Xom**, god of chaos, who answers prayers with teleport traps and grants
+wishes nobody made. This kit was written in that spirit: a student asked for a deadline
+list and an agent mapped six terms of a nursing programme. Xom finds the whole arrangement
+very funny. Xom is not done with you.
+
+*Xom is interested. Point your agent at the repo and see what happens.*
+
+</sub>

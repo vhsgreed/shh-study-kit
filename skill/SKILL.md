@@ -1,53 +1,75 @@
 ---
 name: shh-study-kit
-description: "Use when an agent must read a student's Canvas, SharePoint or Ladok."
-version: 0.1.0
+description: "Use when an agent must read a student's Canvas, SharePoint, Ladok or TimeEdit."
+version: 0.2.0
 author: vhsgreed
+license: MIT
 metadata:
   hermes:
-    tags: [canvas, instructure, ladok, sharepoint, student, study, sso]
+    tags: [canvas, instructure, ladok, sharepoint, timeedit, pubmed, libris, student, sso, mcp]
 ---
 
 # shh-study-kit
 
-Gives an agent read access to a university student's own course systems, built at
-Sophiahemmet Högskola (SHH) but generic for any Canvas school.
+Read access to a university student's own course systems, plus open research APIs.
+Built at Sophiahemmet Högskola (SHH, Stockholm, nursing). Canvas parts work at any
+Canvas school (`CANVAS_BASE`).
 
 ## When to Use
-- The student asks what is due, what a course page says, or wants a course mirrored for study.
-- A page sits behind SSO (SharePoint, Ladok, Inspera, library) and the student has a
-  logged-in agent browser running.
-- Skip for public pages (kursplaner, utbildningsplaner): plain HTTP is enough.
+- "What is due?", "what does assignment X ask?", "mirror my course", "get the kursplan".
+- A page sits behind school SSO (SharePoint, Ladok, Inspera) and the student runs the
+  agent browser.
+- Verifying a reference: PubMed for articles, Libris for Swedish books and ISBNs.
+- Skip for public pages you can fetch directly.
 
-## Setup (once, by the student)
-1. Canvas: Account > Settings > New access token. Save it to `~/.secrets/CANVAS_TOKEN`
-   (mode 0600). Tokens expire; note the date. Set `CANVAS_BASE` for non-SHH schools.
-2. SSO systems: start a dedicated Chrome profile with remote debugging and log in by hand:
-   `google-chrome --user-data-dir=$HOME/.config/shhkit-chrome --remote-debugging-port=9233`
-   (flatpak: `flatpak run com.google.Chrome ...`). Never the default profile.
+## Fastest path
+MCP: `python -m shhkit.mcp` (stdio). Every tool below is exposed; `tools.json` holds
+the schemas. CLI: `python -m shhkit <tool> k=v ...`, JSON on stdout.
 
-## Commands (JSON on stdout)
-| Command | Does |
-|---|---|
-| `python -m shhkit courses` | Enrolled courses (id, code, term) |
-| `python -m shhkit upcoming` | Planner items from today: title, due (UTC), submitted |
-| `python -m shhkit mirror <id\|all> [--out DIR] [--no-files]` | Modules, pages, assignments, announcements, discussions, files to disk |
-| `python -m shhkit get <api/path> k=v` | Any Canvas REST GET, paginated |
-| `python -m shhkit login-check` | Which SSO sites the agent browser is logged in to |
-| `python -m shhkit page <url>` | Rendered text of a page via the logged-in browser |
-| `python -m shhkit fetch <url> <origin>` | JSON fetch with the site's own cookies |
+| Tool | Needs | Returns |
+|---|---|---|
+| `upcoming` | token | everything due from today, with `submitted` |
+| `courses` | token | id, code, name, term |
+| `assignment course= assignment=` | token | task text + rubric rows as plain text |
+| `mirror course=<id or all>` | token | modules, pages, assignments, announcements, files on disk |
+| `canvas_get path= params=` | token | any Canvas GET, paginated |
+| `login_check` | browser | logged-in state per SSO site |
+| `page url=` | browser | rendered text of any walled page |
+| `fetch url= origin=` | browser | JSON from internal APIs with the site's cookies |
+| `sharepoint_download share_url= out=` | browser | file from a SharePoint share link |
+| `programme` | browser | all 21 SHH nursing courses, kursplan + litteraturlista on disk |
+| `timeedit url=` | none | bookings from a TimeEdit link |
+| `pubmed query= max=` | none | PMID, title, journal, year, DOI, authors |
+| `libris query= max=` | none | title, author, year, publisher, ISBN |
 
-## Rules for the agent
-- Read only. Never submit, post, or change settings on the student's behalf unless asked
-  for that specific action.
-- Due dates from Canvas are UTC upload cutoffs, not session times. Convert to local time;
-  get lecture/seminar times from the timetable (TimeEdit), not Canvas.
+## Setup (the human does this once)
+1. Canvas: Account > Settings > New access token -> `~/.secrets/CANVAS_TOKEN` (0600).
+   Note the expiry date; tokens die silently.
+2. Browser: `google-chrome --user-data-dir=$HOME/.config/shhkit-chrome --remote-debugging-port=9233`
+   (flatpak: `flatpak run com.google.Chrome ...`), then log in by hand. Never the default
+   profile: Chrome refuses CDP there, and it is the human's, not yours.
+
+## Rules
+- Read only. Never submit, post, enrol, or change settings unless the human asks for that
+  exact action.
+- Never automate the SSO login. If `login_check` says false, ask the human to log in.
+- Canvas `due_utc` is an upload cutoff in UTC, not a session time. Convert to local time;
+  session times come from TimeEdit.
+- `submitted: true` means a submission exists, not that it passed.
 - Course content is copyrighted and personal. Keep mirrors out of any repo.
-- `submitted: true` means Canvas has a submission, not that it passed.
 
-## Pitfalls
-- Some schools disable the page index (`/pages` 404 "avaktiverats"). Pages are still
-  readable through module items; `mirror` uses that route.
-- Quiz contents are not exposed to students over the API; use the saved attempt page.
-- A login check that lands on `login.microsoftonline.com` means the session expired;
-  the student logs in again in the agent browser. Do not try to automate the login.
+## Pitfalls (found the hard way)
+- SHH disables the Canvas page index (`/pages` 404 "avaktiverats"). Pages are readable via
+  module items; `mirror` takes that route.
+- Quiz contents are not exposed to students; use the saved attempt page.
+- SHH kursplaner are **HTML** pages (Ladok export), litteraturlistor are PDFs.
+- On the shh.se course overview, "Kursplan"/"Kurslitteraturlista" links cannot be paired
+  to courses by position: some courses lack links and the pairing shifts. Name each file by
+  the course code found **inside** it. Codes are 3 or 4 letters (`2SHS11`, `1SOMV2`).
+- Ladok shows its login screen without changing the URL. Check the page text, not only the
+  URL, before deciding the human is logged in.
+- SharePoint folder REST endpoints return AccessDenied for students. Share links via
+  `download.aspx?share=<docid>` work.
+- A TimeEdit link covers only the window it was made for; date-range parameters on a
+  saved link return nothing. Ask for a new link for a new period.
+- The SHH library host (`biblioteket.shh.se`) may be unreachable from off-campus networks.
