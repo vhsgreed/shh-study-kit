@@ -36,7 +36,27 @@ def fold(s):
 
 
 def strip_html(h):
-    return re.sub(r"\s+", " ", html.unescape(re.sub(r"<[^>]+>", " ", h or ""))).strip()
+    """HTML -> text with block elements turned into "\\n".
+
+    The newlines matter: a text-fragment anchor can never cross a block boundary, so the
+    index has to remember where the page's paragraphs were. Without them "</p><p>" glues
+    two sentences into "(OURGINAL)Observera" and every anchor spanning them fails.
+    """
+    s = re.sub(r"</(p|div|li|ul|ol|h[1-6]|tr|table|blockquote|section|article)>", "\n",
+               h or "", flags=re.I)
+    s = re.sub(r"<br\s*/?>", "\n", s, flags=re.I)
+    s = re.sub(r"<li[^>]*>", "\n", s, flags=re.I)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = html.unescape(s).replace("\u00a0", " ")
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r" *\n *", "\n", s)
+    return re.sub(r"\n{2,}", "\n", s).strip()
+
+
+def norm_keep(s):
+    """Lowercase + Swedish folding, but keeps "\\n" so block boundaries survive."""
+    s = (s or "").lower().replace("å", "a").replace("ä", "a").replace("ö", "o").replace("é", "e")
+    return re.sub(r"[ \t]+", " ", s)
 
 
 def edit_distance(a, b, max_d=2):
@@ -260,6 +280,75 @@ def _fuzzy_hits(doc, term):
     return hits
 
 
+MIN_FRAGMENT = 12
+
+
+def fragment_matches(anchor, title, body):
+    """Would a browser text directive for this phrase actually find it?
+
+    The phrase must occur inside a single block, so the comparison is line by line.
+    """
+    a = norm_keep(anchor or "").strip()
+    if not a or len(a) < 8:
+        return False
+    lines = norm_keep(f"{title or ''}\n{body or ''}").split("\n")
+    if any(a in ln for ln in lines):
+        return True
+    words = a.split(" ")
+    return len(words) > 2 and any(" ".join(words[:3]) in ln for ln in lines)
+
+
+def anchor_for(title, at, body):
+    """Longest verified phrase at the match: whole words, max 8, inside one block.
+
+    The offset is moved back to the start of its word, then forward to the next word,
+    because a text directive that starts inside a word never matches.
+    """
+    b = body or ""
+    is_w = lambda ch: bool(ch) and (ch.isalnum() or ch in "åäöé")
+    i = max(0, min(at or 0, len(b) - 1)) if b else 0
+    while i > 0 and is_w(b[i - 1]) and is_w(b[i]):
+        i -= 1
+    while i < len(b) and not is_w(b[i]):
+        i += 1
+
+    # work inside the block that contains the match
+    line_start = b.rfind("\n", 0, max(0, i - 1)) + 1
+    line_end = b.find("\n", i)
+    if line_end < 0:
+        line_end = len(b)
+    line = re.sub(r"[ \t\u00a0]+", " ", b[line_start:line_end])
+
+    words = [(m.group(0), m.start()) for m in re.finditer(r"[0-9a-zA-ZåäöÅÄÖé]+", line)]
+    if not words:
+        return ""
+    k = next((n for n, (w, pos) in enumerate(words) if pos + len(w) > i - line_start), 0)
+
+    for start in range(max(0, k - 3), k + 1):
+        for n in range(min(8, len(words) - start), 0, -1):
+            end = words[start + n - 1][1] + len(words[start + n - 1][0])
+            cand = line[words[start][1]:end].strip()
+            if len(cand) >= MIN_FRAGMENT and fragment_matches(cand, title, b):
+                return cand
+    return words[k][0] if fragment_matches(words[k][0], title, b) else ""
+
+
+def anchor_target(doc, raw, regex=False, fuzzy=False, case_sensitive=False):
+    body = doc.get("body") or ""
+    seed = doc.get("anchor") or ""
+    if not regex and not fuzzy:
+        terms = sorted(parse_query(raw, case_sensitive)["terms"], key=len, reverse=True)
+        if terms:
+            seed = terms[0]
+    at = doc.get("at") or 0
+    if seed:
+        # offsets must be measured in the original body: fold() collapses whitespace and shifts them
+        pos = body.lower().find(str(seed).lower())
+        if pos >= 0:
+            at = pos
+    return anchor_for(doc.get("title"), at, body)
+
+
 def _match(doc, q, case_sensitive=False, fuzzy=False, whole_word=False):
     if q["types"] and doc["type"] not in q["types"]:
         return None
@@ -279,7 +368,7 @@ def _match(doc, q, case_sensitive=False, fuzzy=False, whole_word=False):
         m = list(q["regex"].finditer(hay))
         if not m:
             return None
-        return {"score": len(m) + 5, "at": m[0].start()}
+        return {"score": len(m) + 5, "at": m[0].start(), "anchor": m[0].group(0)}
 
     prep = (lambda s: (s or "")) if case_sensitive else fold
     hay_src, title_src = f"{doc['title']}\n{doc['body']}", doc["title"]
@@ -289,7 +378,7 @@ def _match(doc, q, case_sensitive=False, fuzzy=False, whole_word=False):
     if any(prep(t) not in title for t in q["title"]):
         return None
 
-    score, at = 0, -1
+    score, at, best = 0, -1, ""
     for term in q["terms"]:
         t = prep(term)
         if fuzzy:
@@ -304,10 +393,11 @@ def _match(doc, q, case_sensitive=False, fuzzy=False, whole_word=False):
         if at < 0:
             pos = hay.find(anchor)
             at = pos if pos >= 0 else 0
+        best = best if len(best) > len(anchor) else anchor
         score += (12 if anchor in title else 0) + min(c, 6)
     if doc["type"] in ("anvisning", "sida"):
         score += 3
-    return {"score": score, "at": at}
+    return {"score": score, "at": at, "anchor": best}
 
 
 def run(index, raw, case_sensitive=False, regex=False, fuzzy=False, whole_word=False, limit=40):
@@ -328,18 +418,18 @@ def run(index, raw, case_sensitive=False, regex=False, fuzzy=False, whole_word=F
             key = (doc["href"], doc["title"])
             if key not in found or r["score"] > found[key]["score"]:
                 found[key] = {**doc, "score": r["score"], "at": r["at"]}
+            cur = found[key]
+            if r.get("anchor") and len(r["anchor"]) > len(cur.get("anchor") or ""):
+                cur["anchor"] = r["anchor"]
     if not constrained:
         return {"hits": [], "total": 0, "empty": True}
     hits = sorted(found.values(), key=lambda d: -d["score"])[:limit]
     for h in hits:
         h["snippet"] = snippet(h, h["at"])
-        h["url"] = deep_link(h["href"], first_term(raw, case_sensitive))
+        h["anchor"] = anchor_target(h, raw, regex=regex, fuzzy=fuzzy, case_sensitive=case_sensitive)
+        # an unverifiable anchor yields the bare link rather than a dead fragment
+        h["url"] = deep_link(h["href"], h["anchor"])
     return {"hits": hits, "total": len(found)}
-
-
-def first_term(raw, case_sensitive=False):
-    q = parse_query(raw, case_sensitive)
-    return q["terms"][0] if q["terms"] else ""
 
 
 def suggest(index, raw):

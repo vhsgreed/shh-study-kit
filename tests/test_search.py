@@ -105,6 +105,71 @@ class SearchTests(unittest.TestCase):
         self.assertIn("%2D", S.deep_link("/p/x", "a-b"))
         self.assertEqual(S.deep_link("/p/x", ""), "/p/x")
 
+    def test_anchor_never_starts_mid_word(self):
+        # the real failure: "#:~:text=ontrol (OURGINAL)Observera att ..." -> Chrome ignored it
+        body = ("Information om plagiatkontrol (OURGINAL) Observera att OURGINAL, en automatisk "
+                "mjukvara för textmatchning, används vid bedömning av svar.")
+        anchor = S.anchor_for("Anvisningar", body.index("ontrol"), body)
+        self.assertTrue(anchor, "an anchor is produced")
+        self.assertFalse(anchor.startswith("ontrol"), anchor)
+        self.assertIn("plagiatkontrol", anchor)
+        self.assertNotIn("(OURGINAL)Observera", anchor, "must not glue two blocks together")
+        self.assertIn(anchor, body)
+
+    def test_anchor_is_whole_words_and_length_bounded(self):
+        d = doc("sida", "T", "alfa beta gamma delta epsilon zeta eta theta iota kappa", "2026-01-01")
+        a = S.anchor_for("T", 5, d["body"])
+        self.assertTrue(a)
+        self.assertGreaterEqual(len(a.split()), 3, a)
+        self.assertLessEqual(len(a), 120, a)
+
+    def test_unverifiable_anchor_degrades_to_plain_link(self):
+        self.assertEqual(S.deep_link("/p/x", ""), "/p/x")
+        self.assertFalse(S.fragment_matches("", "t", "b"))
+        self.assertFalse(S.fragment_matches("zzz not here at all", "t", "b"))
+        self.assertEqual(S.anchor_for("t", 999, "short"), "")
+
+    def test_anchor_never_spans_two_blocks(self):
+        # second real failure: "</p><p>" was glued into "(OURGINAL)Observera"
+        body = ("Information om plagiatkontrol (OURGINAL)\n"
+                "Observera att OURGINAL, en automatisk mjukvara för textmatchning, används.")
+        d = doc("sida", "T", body, "2026-01-01")
+        hit = S.run({"course_id": "1", "source": "t", "docs": [d]}, "OURGINAL")["hits"][0]
+        a = S.anchor_target(hit, "OURGINAL")
+        self.assertTrue(a)
+        self.assertNotIn("\n", a, a)
+        self.assertTrue(any(a in line for line in body.split("\n")), f"spans blocks: {a}")
+
+    def test_strip_html_keeps_block_boundaries(self):
+        out = S.strip_html("<p>alfa beta</p><p>gamma delta</p>")
+        self.assertEqual(out, "alfa beta\ngamma delta")
+        self.assertNotIn("gamma", S.strip_html("<p>alfa beta</p>") + "x")
+
+    def test_anchor_contains_the_search_term(self):
+        # regression: the anchor scrolled near the match but contained none of the query
+        for kw, query in (({}, "OURGINAL"), ({"fuzzy": True}, "OURIGINAL")):
+            hit = S.run(IDX, query, **kw)["hits"][0]
+            self.assertIn("ourginal", S.fold(hit["anchor"]), f"{query} -> {hit['anchor']}")
+
+    def test_result_urls_carry_a_verified_anchor(self):
+        res = S.run(IDX, "OURGINAL")
+        hit = res["hits"][0]
+        self.assertTrue(hit["anchor"])
+        self.assertIn(hit["anchor"], hit["body"])
+        self.assertIn("#:~:text=", hit["url"])
+        enc = hit["url"].split("text=", 1)[1]
+        import urllib.parse
+        self.assertEqual(urllib.parse.unquote(enc), hit["anchor"])
+
+    def test_fuzzy_and_regex_urls_are_anchored_too(self):
+        for kw in ({"fuzzy": True}, {"regex": True}):
+            query = "OURIGINAL" if kw.get("fuzzy") else "OURG\\w*"
+            res = S.run(IDX, query, **kw)
+            self.assertTrue(res["hits"], query)
+            hit = res["hits"][0]
+            self.assertTrue(hit["anchor"], query)
+            self.assertIn(hit["anchor"], hit["body"], query)
+
     def test_snippet_contains_match(self):
         d = doc("sida", "T", "x" * 400 + " needle " + "y" * 400)
         self.assertIn("needle", S.snippet(d, 405))

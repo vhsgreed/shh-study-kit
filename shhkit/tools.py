@@ -141,7 +141,8 @@ def search(course, query, source="auto", regex=False, fuzzy=False, whole_word=Fa
     out = {"source": idx["source"], "documents": len(idx["docs"]),
            "total": res.get("total", 0), "hits": [
                {"type": h["type"], "title": h["title"], "score": h["score"],
-                "snippet": h["snippet"], "url": h["url"]} for h in res.get("hits", [])]}
+                "anchor": h.get("anchor", ""), "snippet": h["snippet"], "url": h["url"]}
+               for h in res.get("hits", [])]}
     if res.get("error"):
         out["error"] = res["error"]
     if not out["total"] and not regex:
