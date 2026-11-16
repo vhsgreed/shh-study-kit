@@ -147,7 +147,7 @@
  },
  {
   "name": "search",
-  "description": "Full-text search inside one course: pages, assignments with rubrics, modules, discussions, files. Operators: \"phrase\", -exclude, +required, OR, type:sida|uppgift|fil|modul|diskussion, filetype:pdf, intitle:word, before:YYYY-MM-DD, after:YYYY-MM-DD, plus regex/fuzzy toggles. source='mirror' searches a local mirror (fast, may be stale), 'api' fetches live from Canvas, 'auto' prefers the mirror.",
+  "description": "Full-text search inside one course: pages, assignments with rubrics, modules, discussions, files. Operators: \"phrase\", -exclude, +required, OR, type:sida|uppgift|fil|modul|diskussion, filetype:pdf, intitle:word, before:YYYY-MM-DD, after:YYYY-MM-DD, plus regex/fuzzy toggles. source='mirror' searches a local mirror (fast, may be stale), 'api' fetches live from Canvas, 'auto' prefers the mirror. include_docs=true also searches the document text built by the docs tool.",
   "inputSchema": {
    "type": "object",
    "properties": {
@@ -172,6 +172,9 @@
     "case_sensitive": {
      "type": "boolean"
     },
+    "include_docs": {
+     "type": "boolean"
+    },
     "limit": {
      "type": "integer"
     }
@@ -179,6 +182,34 @@
    "required": [
     "course",
     "query"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "docs",
+  "description": "Download a course's files once, extract their text (pdf, docx, pptx, xlsx, html, images) and cache it keyed by file id + updated_at. Bytes are discarded, text is kept. ocr=true adds tesseract for documents with no usable text layer; it is slow, so it is not part of a normal index run.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "course": {
+     "type": "string"
+    },
+    "ocr": {
+     "type": "boolean"
+    },
+    "force": {
+     "type": "boolean"
+    },
+    "max_files": {
+     "type": "integer"
+    },
+    "ocr_max_pages": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "course"
    ],
    "additionalProperties": false
   }

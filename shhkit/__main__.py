@@ -43,6 +43,11 @@ def main(argv):
     if argv[0] == "manifest":
         emit(manifest())
         return
+    if argv[0] == "serve":
+        from .serve import serve
+        opts = parse(argv[1:])
+        serve(host=opts.get("host", "127.0.0.1"), port=int(opts.get("port", 8790)))
+        return
     try:
         emit(call(argv[0], parse(argv[1:])))
     except KeyError as e:

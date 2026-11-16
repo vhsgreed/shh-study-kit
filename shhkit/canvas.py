@@ -67,6 +67,12 @@ def download(url, dest):
     return len(body)
 
 
+def download_bytes(url):
+    """Fetch a file into memory. Used by the document extractor, which keeps text, not bytes."""
+    body, _ = _req(url, raw=True)
+    return body
+
+
 def safe(name):
     return re.sub(r'[\\/:*?"<>|\n\r\t]+', "_", name).strip()[:150] or "unnamed"
 

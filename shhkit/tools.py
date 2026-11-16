@@ -126,23 +126,38 @@ def sharepoint_download(share_url, out="~/courses/downloads"):
       "modules, discussions, files. Operators: \"phrase\", -exclude, +required, OR, "
       "type:sida|uppgift|fil|modul|diskussion, filetype:pdf, intitle:word, before:YYYY-MM-DD, "
       "after:YYYY-MM-DD, plus regex/fuzzy toggles. source='mirror' searches a local mirror "
-      "(fast, may be stale), 'api' fetches live from Canvas, 'auto' prefers the mirror.",
+      "(fast, may be stale), 'api' fetches live from Canvas, 'auto' prefers the mirror. "
+      "include_docs=true also searches the document text built by the docs tool.",
       {"course": S, "query": S, "source": S, "regex": B, "fuzzy": B, "whole_word": B,
-       "case_sensitive": B, "limit": I}, ["course", "query"])
+       "case_sensitive": B, "include_docs": B, "limit": I}, ["course", "query"])
 def search(course, query, source="auto", regex=False, fuzzy=False, whole_word=False,
-           case_sensitive=False, limit=25):
+           case_sensitive=False, include_docs=False, limit=25):
     import pathlib as _p
+    from . import docs as docs_mod
     from . import search as s
     mirror = _p.Path("~/courses/canvas").expanduser() / str(course)
     use_mirror = source == "mirror" or (source == "auto" and (mirror / "pages").exists())
     idx = s.index_from_mirror(mirror) if use_mirror else s.build_index(course)
+    if include_docs:
+        extra = docs_mod.load(course)
+        # a file with extracted text should appear once, as the text hit, not also as a name
+        with_text = {(d.get("title") or "").lower() for d in extra}
+        idx = {**idx, "docs": [d for d in idx["docs"]
+                               if not (d["type"] == "fil" and (d.get("title") or "").lower() in with_text)]
+               + extra}
     res = s.run(idx, query, case_sensitive=case_sensitive, regex=regex, fuzzy=fuzzy,
                 whole_word=whole_word, limit=limit)
+    hits = []
+    for h in res.get("hits", []):
+        row = {"type": h["type"], "title": h["title"], "score": h["score"],
+               "anchor": h.get("anchor", ""), "snippet": h["snippet"], "url": h["url"]}
+        if h["type"] == "fildok":
+            # page numbers matter for citations, and pdftotext keeps them as \f
+            row["page"] = docs_mod.page_of(h.get("body") or "", h.get("at") or 0)
+            row["ocr_pages"] = h.get("ocr_pages") or 0
+        hits.append(row)
     out = {"source": idx["source"], "documents": len(idx["docs"]),
-           "total": res.get("total", 0), "hits": [
-               {"type": h["type"], "title": h["title"], "score": h["score"],
-                "anchor": h.get("anchor", ""), "snippet": h["snippet"], "url": h["url"]}
-               for h in res.get("hits", [])]}
+           "total": res.get("total", 0), "hits": hits}
     if res.get("error"):
         out["error"] = res["error"]
     if not out["total"] and not regex:
@@ -150,6 +165,19 @@ def search(course, query, source="auto", regex=False, fuzzy=False, whole_word=Fa
         if alt:
             out["did_you_mean"] = alt
     return out
+
+
+# ---------------------------------------------------------- Document text
+
+@tool("docs", "Download a course's files once, extract their text (pdf, docx, pptx, xlsx, html, "
+      "images) and cache it keyed by file id + updated_at. Bytes are discarded, text is kept. "
+      "ocr=true adds tesseract for documents with no usable text layer; it is slow, so it is "
+      "not part of a normal index run.",
+      {"course": S, "ocr": B, "force": B, "max_files": I, "ocr_max_pages": I}, ["course"])
+def docs(course, ocr=False, force=False, max_files=None, ocr_max_pages=60):
+    from . import docs as d
+    return d.build(course, ocr=ocr, force=force, max_files=max_files,
+                   ocr_max_pages=ocr_max_pages)
 
 
 # ---------------------------------------------------------- Session surface

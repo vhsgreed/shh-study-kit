@@ -32,6 +32,9 @@ the schemas. CLI: `python -m shhkit <tool> k=v ...`, JSON on stdout.
 | `courses` | token | id, code, name, term |
 | `assignment course= assignment=` | token | task text + rubric rows as plain text |
 | `search course= query=` | token | full-text search inside a course: pages, assignments with rubrics, modules, discussions, files. Operators `"phrase" -exclude +required OR type: filetype: intitle: before: after:`, plus `regex`/`fuzzy`/`whole_word`. `source=auto` uses the local mirror when one exists, `api` goes live |
+| `docs course=` | local binaries | download a course's files once and cache their text (pdf via pdftotext, docx/pptx/xlsx via zipfile, html, images). `ocr=true` adds tesseract for image-only files; the text cache is keyed by file id + updated_at, so a reindex is free |
+| `search ... include_docs=true` | token/local | also search the cached document text; hits come back as `type=fildok` with `page` numbers |
+| `serve` | none | `python -m shhkit serve` starts the local deep-index HTTP endpoint (127.0.0.1:8791): `/health`, `/search?course=&q=&docs=1`, `/docs`, `/index`. Reachable from another machine through `tailscale serve --bg 8791` |
 | `mirror course=<id or all>` | token | modules, pages, assignments, announcements, files on disk |
 | `canvas_get path= params=` | token | any Canvas GET, paginated |
 | `login_check` | browser | logged-in state per SSO site |
