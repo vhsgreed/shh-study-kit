@@ -1,15 +1,15 @@
-"""shhkit CLI. Every tool in shhkit.tools is a subcommand; output is JSON on stdout.
+"""unistudy CLI. Every tool in unistudy.tools is a subcommand; output is JSON on stdout.
 
-  python -m shhkit                      list tools
-  python -m shhkit <tool> [k=v ...]     run a tool (values parsed as JSON when possible)
-  python -m shhkit <tool> --json '{..}' run a tool with a JSON argument object
-  python -m shhkit manifest             tool schemas (same as tools.json)
-  python -m shhkit.mcp                  MCP server over stdio
+  python -m unistudy                      list tools
+  python -m unistudy <tool> [k=v ...]     run a tool (values parsed as JSON when possible)
+  python -m unistudy <tool> --json '{..}' run a tool with a JSON argument object
+  python -m unistudy manifest             tool schemas (same as tools.json)
+  python -m unistudy.mcp                  MCP server over stdio
 
 Examples:
-  python -m shhkit upcoming
-  python -m shhkit mirror course=all
-  python -m shhkit pubmed query="person-centred care psychiatry" max=5
+  python -m unistudy upcoming
+  python -m unistudy mirror course=all
+  python -m unistudy pubmed query="person-centred care psychiatry" max=5
 """
 import json
 import sys

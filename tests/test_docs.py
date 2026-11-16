@@ -1,4 +1,4 @@
-"""Tests for shhkit.docs: extraction, page numbers, cache keys, OCR decisions.
+"""Tests for unistudy.docs: extraction, page numbers, cache keys, OCR decisions.
 
 No network: fixtures are built in memory. Real PDFs are exercised by the `docs` tool run.
 
@@ -9,7 +9,7 @@ import zipfile
 
 import unittest
 
-from shhkit import docs as D
+from unistudy import docs as D
 
 
 def make_zip(files):

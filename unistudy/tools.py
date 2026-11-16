@@ -1,7 +1,7 @@
 """One tool registry for every surface: CLI, MCP server, tools.json manifest.
 
 Each tool is a plain function with a JSON-schema'd signature. Add a tool here and it
-appears in `python -m shhkit <name>`, in the MCP server, and in `tools.json`.
+appears in `python -m unistudy <name>`, in the MCP server, and in `tools.json`.
 All tools are read-only toward the school's systems; the only writes are local files.
 """
 import json

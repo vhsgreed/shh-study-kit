@@ -6,10 +6,10 @@ are NOT paired by position. Instead every document is downloaded and named by th
 code found inside it (the page's own index misaligns whenever a course omits a link).
 
 Documents live in SharePoint as share links; `download.aspx?share=<docid>` returns the
-real bytes to a logged-in browser (`shhkit.browser`). SHH publishes kursplaner as HTML
+real bytes to a logged-in browser (`unistudy.browser`). SHH publishes kursplaner as HTML
 pages and kurslitteraturlistor as PDFs.
 
-    python -m shhkit.programme
+    python -m unistudy.programme
 """
 import asyncio
 import json

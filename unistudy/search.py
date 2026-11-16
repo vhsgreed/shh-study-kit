@@ -5,7 +5,7 @@ and a student searching the same course get comparable answers: implicit AND, "p
 -exclusion, +required, OR, type:, filetype:, intitle:, before:, after:, regex, fuzzy,
 title-weighted ranking, snippets, and deep links that scroll to the match.
 
-    from shhkit import search
+    from unistudy import search
     idx = search.build_index(2416)              # live Canvas
     idx = search.index_from_mirror("~/courses/canvas/2416")
     search.run(idx, 'plagiatkontroll type:sida')
@@ -182,7 +182,7 @@ def build_index(course_id, base=None):
 
 
 def index_from_mirror(path):
-    """Index an existing `python -m shhkit mirror` output directory."""
+    """Index an existing `python -m unistudy mirror` output directory."""
     root = pathlib.Path(path).expanduser()
     docs = []
     add = _adder(docs)

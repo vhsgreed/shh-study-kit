@@ -17,8 +17,8 @@ OCR is deliberately not part of every index run: it is slow (1.5-3 s per page at
 and most files do not need it. It runs when a document has no usable text layer, is capped,
 and its result is cached like any other text.
 
-    python -m shhkit docs course=2416                 # text layer only, fast
-    python -m shhkit docs course=2416 ocr=true        # plus OCR for image-only files
+    python -m unistudy docs course=2416                 # text layer only, fast
+    python -m unistudy docs course=2416 ocr=true        # plus OCR for image-only files
 """
 import hashlib
 import html
@@ -33,7 +33,7 @@ import zipfile
 
 from . import canvas
 
-CACHE = pathlib.Path.home() / ".cache/shhkit/docs"
+CACHE = pathlib.Path.home() / ".cache/unistudy/docs"
 
 TEXT_EXTS = {"txt", "md", "csv", "json", "html", "htm", "xml", "py", "js", "css"}
 IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff"}

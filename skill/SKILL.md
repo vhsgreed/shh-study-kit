@@ -1,5 +1,5 @@
 ---
-name: shh-study-kit
+name: unistudy
 description: "Use when an agent must read a student's Canvas, SharePoint, Ladok or TimeEdit."
 version: 0.2.0
 author: vhsgreed
@@ -9,7 +9,7 @@ metadata:
     tags: [canvas, instructure, ladok, sharepoint, timeedit, pubmed, libris, student, sso, mcp]
 ---
 
-# shh-study-kit
+# unistudy
 
 Read access to a university student's own course systems, plus open research APIs.
 Built at Sophiahemmet Högskola (SHH, Stockholm, nursing). Canvas parts work at any
@@ -23,8 +23,8 @@ Canvas school (`CANVAS_BASE`).
 - Skip for public pages you can fetch directly.
 
 ## Fastest path
-MCP: `python -m shhkit.mcp` (stdio). Every tool below is exposed; `tools.json` holds
-the schemas. CLI: `python -m shhkit <tool> k=v ...`, JSON on stdout.
+MCP: `python -m unistudy.mcp` (stdio). Every tool below is exposed; `tools.json` holds
+the schemas. CLI: `python -m unistudy <tool> k=v ...`, JSON on stdout.
 
 | Tool | Needs | Returns |
 |---|---|---|
@@ -34,7 +34,7 @@ the schemas. CLI: `python -m shhkit <tool> k=v ...`, JSON on stdout.
 | `search course= query=` | token | full-text search inside a course: pages, assignments with rubrics, modules, discussions, files. Operators `"phrase" -exclude +required OR type: filetype: intitle: before: after:`, plus `regex`/`fuzzy`/`whole_word`. `source=auto` uses the local mirror when one exists, `api` goes live |
 | `docs course=` | local binaries | download a course's files once and cache their text (pdf via pdftotext, docx/pptx/xlsx via zipfile, html, images). `ocr=true` adds tesseract for image-only files; the text cache is keyed by file id + updated_at, so a reindex is free |
 | `search ... include_docs=true` | token/local | also search the cached document text; hits come back as `type=fildok` with `page` numbers |
-| `serve` | none | `python -m shhkit serve` starts the local deep-index HTTP endpoint (127.0.0.1:8791): `/health`, `/search?course=&q=&docs=1`, `/docs`, `/index`. Reachable from another machine through `tailscale serve --bg 8791` |
+| `serve` | none | `python -m unistudy serve` starts the local deep-index HTTP endpoint (127.0.0.1:8791): `/health`, `/search?course=&q=&docs=1`, `/docs`, `/index`. Reachable from another machine through `tailscale serve --bg 8791` |
 | `mirror course=<id or all>` | token | modules, pages, assignments, announcements, files on disk |
 | `canvas_get path= params=` | token | any Canvas GET, paginated |
 | `login_check` | browser | logged-in state per SSO site |
@@ -49,7 +49,7 @@ the schemas. CLI: `python -m shhkit <tool> k=v ...`, JSON on stdout.
 ## Setup (the human does this once)
 1. Canvas: Account > Settings > New access token -> `~/.secrets/CANVAS_TOKEN` (0600).
    Note the expiry date; tokens die silently.
-2. Browser: `google-chrome --user-data-dir=$HOME/.config/shhkit-chrome --remote-debugging-port=9233`
+2. Browser: `google-chrome --user-data-dir=$HOME/.config/unistudy-chrome --remote-debugging-port=9233`
    (flatpak: `flatpak run com.google.Chrome ...`), then log in by hand. Never the default
    profile: Chrome refuses CDP there, and it is the human's, not yours.
 

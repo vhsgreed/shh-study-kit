@@ -1,11 +1,11 @@
 """Minimal MCP server over stdio (JSON-RPC 2.0, newline-delimited). Stdlib only.
 
-    python -m shhkit.mcp
+    python -m unistudy.mcp
 
 Register it in any MCP client, e.g. Claude Code:
-    claude mcp add shhkit -- python -m shhkit.mcp
+    claude mcp add unistudy -- python -m unistudy.mcp
 Hermes (config.yaml):
-    mcp_servers: {shhkit: {command: python3, args: [-m, shhkit.mcp]}}
+    mcp_servers: {unistudy: {command: python3, args: [-m, unistudy.mcp]}}
 """
 import json
 import sys
@@ -32,7 +32,7 @@ def handle(req):
     if method == "initialize":
         return {"protocolVersion": params.get("protocolVersion", PROTOCOL),
                 "capabilities": {"tools": {"listChanged": False}},
-                "serverInfo": {"name": "shhkit", "version": __version__},
+                "serverInfo": {"name": "unistudy", "version": __version__},
                 "instructions": ("Read-only access to a student's own Canvas, SharePoint, Ladok "
                                  "and TimeEdit, plus PubMed and Libris. Start with `upcoming`. "
                                  "SSO tools need the agent browser on CDP :9233; run "

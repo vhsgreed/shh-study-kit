@@ -5,7 +5,7 @@ dedicated Chrome profile with remote debugging, log in once by hand, and let the
 read pages through it. Never point this at the user's default profile (Chrome refuses,
 and it should not be the agent's).
 
-    flatpak run com.google.Chrome --user-data-dir=~/.var/app/com.google.Chrome/config/shhkit \
+    flatpak run com.google.Chrome --user-data-dir=~/.var/app/com.google.Chrome/config/unistudy \
         --remote-debugging-port=9233
 """
 import asyncio

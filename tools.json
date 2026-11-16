@@ -206,6 +206,9 @@
     },
     "ocr_max_pages": {
      "type": "integer"
+    },
+    "only_contains": {
+     "type": "string"
     }
    },
    "required": [
