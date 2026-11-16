@@ -120,6 +120,37 @@ def sharepoint_download(share_url, out="~/courses/downloads"):
     return sharepoint.save_share(share_url, out)
 
 
+# ---------------------------------------------------------- Course search
+
+@tool("search", "Full-text search inside one course: pages, assignments with rubrics, "
+      "modules, discussions, files. Operators: \"phrase\", -exclude, +required, OR, "
+      "type:sida|uppgift|fil|modul|diskussion, filetype:pdf, intitle:word, before:YYYY-MM-DD, "
+      "after:YYYY-MM-DD, plus regex/fuzzy toggles. source='mirror' searches a local mirror "
+      "(fast, may be stale), 'api' fetches live from Canvas, 'auto' prefers the mirror.",
+      {"course": S, "query": S, "source": S, "regex": B, "fuzzy": B, "whole_word": B,
+       "case_sensitive": B, "limit": I}, ["course", "query"])
+def search(course, query, source="auto", regex=False, fuzzy=False, whole_word=False,
+           case_sensitive=False, limit=25):
+    import pathlib as _p
+    from . import search as s
+    mirror = _p.Path("~/courses/canvas").expanduser() / str(course)
+    use_mirror = source == "mirror" or (source == "auto" and (mirror / "pages").exists())
+    idx = s.index_from_mirror(mirror) if use_mirror else s.build_index(course)
+    res = s.run(idx, query, case_sensitive=case_sensitive, regex=regex, fuzzy=fuzzy,
+                whole_word=whole_word, limit=limit)
+    out = {"source": idx["source"], "documents": len(idx["docs"]),
+           "total": res.get("total", 0), "hits": [
+               {"type": h["type"], "title": h["title"], "score": h["score"],
+                "snippet": h["snippet"], "url": h["url"]} for h in res.get("hits", [])]}
+    if res.get("error"):
+        out["error"] = res["error"]
+    if not out["total"] and not regex:
+        alt = s.suggest(idx, query)
+        if alt:
+            out["did_you_mean"] = alt
+    return out
+
+
 # ---------------------------------------------------------- Programme map
 
 @tool("programme", "Map the whole SHH nursing programme: every course with its kursplan and "

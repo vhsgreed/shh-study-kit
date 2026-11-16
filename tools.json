@@ -146,6 +146,44 @@
   }
  },
  {
+  "name": "search",
+  "description": "Full-text search inside one course: pages, assignments with rubrics, modules, discussions, files. Operators: \"phrase\", -exclude, +required, OR, type:sida|uppgift|fil|modul|diskussion, filetype:pdf, intitle:word, before:YYYY-MM-DD, after:YYYY-MM-DD, plus regex/fuzzy toggles. source='mirror' searches a local mirror (fast, may be stale), 'api' fetches live from Canvas, 'auto' prefers the mirror.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "course": {
+     "type": "string"
+    },
+    "query": {
+     "type": "string"
+    },
+    "source": {
+     "type": "string"
+    },
+    "regex": {
+     "type": "boolean"
+    },
+    "fuzzy": {
+     "type": "boolean"
+    },
+    "whole_word": {
+     "type": "boolean"
+    },
+    "case_sensitive": {
+     "type": "boolean"
+    },
+    "limit": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "course",
+    "query"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "programme",
   "description": "Map the whole SHH nursing programme: every course with its kursplan and kurslitteraturlista downloaded and verified by the course code inside each file.",
   "inputSchema": {

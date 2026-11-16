@@ -31,6 +31,7 @@ the schemas. CLI: `python -m shhkit <tool> k=v ...`, JSON on stdout.
 | `upcoming` | token | everything due from today, with `submitted` |
 | `courses` | token | id, code, name, term |
 | `assignment course= assignment=` | token | task text + rubric rows as plain text |
+| `search course= query=` | token | full-text search inside a course: pages, assignments with rubrics, modules, discussions, files. Operators `"phrase" -exclude +required OR type: filetype: intitle: before: after:`, plus `regex`/`fuzzy`/`whole_word`. `source=auto` uses the local mirror when one exists, `api` goes live |
 | `mirror course=<id or all>` | token | modules, pages, assignments, announcements, files on disk |
 | `canvas_get path= params=` | token | any Canvas GET, paginated |
 | `login_check` | browser | logged-in state per SSO site |
