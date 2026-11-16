@@ -1,0 +1,3 @@
+# ladok-vakt: silent unless a registration window opens, closes within 3 days,
+# or the fetch itself is broken.
+10 7 * * *  cd $HOME/src/ladok-vakt && LADOK_MAIL_TO=you@example.com /usr/bin/python3 -m ladok_vakt

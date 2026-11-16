@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ladok-vakt"
+version = "0.1.0"
+description = "Mejl nar Ladok-anmalan oppnar / email notifications for Swedish Ladok registration windows"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+dependencies = ["websockets>=10"]
+keywords = ["ladok", "sweden", "university", "student", "notifications", "email", "cron", "alert"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Education",
+  "Topic :: System :: Monitoring",
+]
+
+[project.urls]
+Homepage = "https://github.com/vhsgreed/ladok-vakt"
+
+[tool.setuptools.packages.find]
+include = ["ladok_vakt*"]
