@@ -36,6 +36,8 @@ the schemas. CLI: `python -m unitoolkit <tool> k=v ...`, JSON on stdout.
 | `search ... include_docs=true` | token/local | also search the cached document text; hits come back as `type=fildok` with `page` numbers |
 | `serve` | none | `python -m unitoolkit serve` starts the local deep-index HTTP endpoint (127.0.0.1:8791): `/health`, `/search?course=&q=&docs=1`, `/docs`, `/index`. Reachable from another machine through `tailscale serve --bg 8791` |
 | `mirror course=<id or all>` | token | modules, pages, assignments, announcements, files on disk |
+| `surface course=` | token | probe which endpoints a student session can reach: status, item count, blocked ones (pages index, quizzes, rubrics) |
+| `serve` | none | CLI subcommand, not a tool: `python3 -m unitoolkit serve` (127.0.0.1:8791) exposes /health, /search, /docs, /index to the browser plugin and to other machines via `tailscale serve --bg 8791` |
 | `canvas_get path= params=` | token | any Canvas GET, paginated |
 | `login_check` | browser | logged-in state per SSO site |
 | `page url=` | browser | rendered text of any walled page |
