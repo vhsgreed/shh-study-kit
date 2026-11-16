@@ -140,6 +140,17 @@ class SearchTests(unittest.TestCase):
         self.assertNotIn("\n", a, a)
         self.assertTrue(any(a in line for line in body.split("\n")), f"spans blocks: {a}")
 
+    def test_adder_keeps_the_richest_document(self):
+        # a module item creates an empty assignment stub first; the full one must replace it
+        docs = []
+        add = S._adder(docs)
+        add("uppgift", "Delfråga", "", "/courses/1/assignments/9")
+        add("uppgift", "Delfråga", "Rubrik: Definition av samverkan i team", "/courses/1/assignments/9")
+        self.assertEqual(len(docs), 1)
+        self.assertIn("Definition av samverkan", docs[0]["body"])
+        add("uppgift", "Delfråga", "kort", "/courses/1/assignments/9")
+        self.assertIn("Definition av samverkan", docs[0]["body"], "a poorer duplicate must not win")
+
     def test_strip_html_keeps_block_boundaries(self):
         out = S.strip_html("<p>alfa beta</p><p>gamma delta</p>")
         self.assertEqual(out, "alfa beta\ngamma delta")

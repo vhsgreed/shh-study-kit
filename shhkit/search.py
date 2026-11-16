@@ -93,16 +93,32 @@ def _doc(type_, title, body, href, ext="", date=""):
 
 
 # ------------------------------------------------------------------ builders
+def _adder(docs):
+    """Return an add() that keeps the richest version of a document.
+
+    A module item creates an empty stub for its assignment or page; the full document arrives
+    later with the same key. First-write-wins would drop rubric text and task descriptions.
+    """
+    at = {}
+
+    def add(type_, title, body, href, ext="", date=""):
+        d = _doc(type_, title, body, href, ext=ext, date=date)
+        key = (d["type"], d["title"], d["href"])
+        if key not in at:
+            at[key] = len(docs)
+            docs.append(d)
+            return
+        pos = at[key]
+        if len(d["body"]) + len(d["date"]) > len(docs[pos]["body"]) + len(docs[pos]["date"]):
+            docs[pos] = d
+
+    return add
+
+
 def build_index(course_id, base=None):
     """Index a course from the live Canvas API. Read-only, token from $CANVAS_TOKEN."""
-    docs, seen = [], set()
-
-    def add(*a, **k):
-        d = _doc(*a, **k)
-        key = (d["type"], d["title"], d["href"])
-        if key not in seen:
-            seen.add(key)
-            docs.append(d)
+    docs = []
+    add = _adder(docs)
 
     modules = canvas_api.get(f"courses/{course_id}/modules", **{"include[]": ["items"]})
     page_slugs = []
@@ -126,7 +142,9 @@ def build_index(course_id, base=None):
         add("sida", p.get("title") or slug, strip_html(p.get("body")), f"/courses/{course_id}/pages/{slug}",
             date=p.get("updated_at") or "")
 
-    for a in canvas_api.try_get(f"courses/{course_id}/assignments") or []:
+    # include[]=rubric: without it Canvas returns rubric: [] and the grading criteria,
+    # which students search for by name, never enter the index
+    for a in canvas_api.try_get(f"courses/{course_id}/assignments", **{"include[]": ["rubric"]}) or []:
         if not isinstance(a, dict):
             continue
         rubric = " ".join(f"{r.get('description','')} {r.get('long_description','')}"
@@ -154,14 +172,8 @@ def build_index(course_id, base=None):
 def index_from_mirror(path):
     """Index an existing `python -m shhkit mirror` output directory."""
     root = pathlib.Path(path).expanduser()
-    docs, seen = [], set()
-
-    def add(*a, **k):
-        d = _doc(*a, **k)
-        key = (d["type"], d["title"], d["href"])
-        if key not in seen:
-            seen.add(key)
-            docs.append(d)
+    docs = []
+    add = _adder(docs)
 
     mods_file = root / "modules.json"
     course_id = root.name

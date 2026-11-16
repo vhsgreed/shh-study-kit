@@ -184,6 +184,22 @@
   }
  },
  {
+  "name": "surface",
+  "description": "Probe which Canvas endpoints a student session can reach, before building anything on assumptions. Returns per-endpoint status, item count and payload size, plus a summary of what is blocked (pages index, quizzes and rubrics are commonly off).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "course": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "course"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "programme",
   "description": "Map the whole SHH nursing programme: every course with its kursplan and kurslitteraturlista downloaded and verified by the course code inside each file.",
   "inputSchema": {

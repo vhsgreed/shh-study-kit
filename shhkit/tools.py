@@ -152,6 +152,20 @@ def search(course, query, source="auto", regex=False, fuzzy=False, whole_word=Fa
     return out
 
 
+# ---------------------------------------------------------- Session surface
+
+@tool("surface", "Probe which Canvas endpoints a student session can reach, before building "
+      "anything on assumptions. Returns per-endpoint status, item count and payload size, "
+      "plus a summary of what is blocked (pages index, quizzes and rubrics are commonly off).",
+      {"course": S}, ["course"])
+def surface(course):
+    from . import surface as s
+    rows = s.probe_course(course)
+    return {"course": course, "summary": s.summary(rows),
+            "endpoints": [{"label": r["label"], "status": r["status"], "count": r["count"],
+                           "bytes": r["bytes"], "note": r["note"]} for r in rows]}
+
+
 # ---------------------------------------------------------- Programme map
 
 @tool("programme", "Map the whole SHH nursing programme: every course with its kursplan and "
