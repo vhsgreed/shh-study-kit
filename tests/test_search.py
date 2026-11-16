@@ -1,11 +1,11 @@
-"""Tests for unistudy.search. Offline: builds an index object in memory.
+"""Tests for unitoolkit.search. Offline: builds an index object in memory.
 
     python3 -m unittest discover -s tests -v
 """
 import unittest
 
-from unistudy import docs as DOCS
-from unistudy import search as S
+from unitoolkit import docs as DOCS
+from unitoolkit import search as S
 
 
 def doc(type_, title, body, date="", ext=""):

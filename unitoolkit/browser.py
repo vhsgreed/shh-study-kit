@@ -5,7 +5,7 @@ dedicated Chrome profile with remote debugging, log in once by hand, and let the
 read pages through it. Never point this at the user's default profile (Chrome refuses,
 and it should not be the agent's).
 
-    flatpak run com.google.Chrome --user-data-dir=~/.var/app/com.google.Chrome/config/unistudy \
+    flatpak run com.google.Chrome --user-data-dir=~/.var/app/com.google.Chrome/config/unitoolkit \
         --remote-debugging-port=9233
 """
 import asyncio
@@ -120,7 +120,8 @@ def fetch_binary(url, origin):
         js = (f"fetch({json.dumps(url)},{{credentials:'include'}}).then(async r=>{{"
               "const b=new Uint8Array(await r.arrayBuffer());let s='';"
               "for(let i=0;i<b.length;i+=8192)s+=String.fromCharCode.apply(null,b.subarray(i,i+8192));"
-              "return {status:r.status,type:r.headers.get('content-type'),b64:btoa(s)};})")
+              "return {status:r.status,type:r.headers.get('content-type'),"
+              "cd:r.headers.get('content-disposition'),b64:btoa(s)};})")
         return await _eval(call, js)
 
     try:

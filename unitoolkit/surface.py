@@ -5,7 +5,7 @@ may be disabled per course, rubrics are empty unless asked for with include[]=ru
 quizzes endpoint can be off, and students cannot read the rubric collection. Probing first,
 then building, keeps the search index honest about what it can cover.
 
-    from unistudy import surface
+    from unitoolkit import surface
     surface.probe_course(2416)     # -> list of rows with status, count, bytes
 """
 import json

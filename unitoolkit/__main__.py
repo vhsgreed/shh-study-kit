@@ -1,15 +1,15 @@
-"""unistudy CLI. Every tool in unistudy.tools is a subcommand; output is JSON on stdout.
+"""unitoolkit CLI. Every tool in unitoolkit.tools is a subcommand; output is JSON on stdout.
 
-  python -m unistudy                      list tools
-  python -m unistudy <tool> [k=v ...]     run a tool (values parsed as JSON when possible)
-  python -m unistudy <tool> --json '{..}' run a tool with a JSON argument object
-  python -m unistudy manifest             tool schemas (same as tools.json)
-  python -m unistudy.mcp                  MCP server over stdio
+  python -m unitoolkit                      list tools
+  python -m unitoolkit <tool> [k=v ...]     run a tool (values parsed as JSON when possible)
+  python -m unitoolkit <tool> --json '{..}' run a tool with a JSON argument object
+  python -m unitoolkit manifest             tool schemas (same as tools.json)
+  python -m unitoolkit.mcp                  MCP server over stdio
 
 Examples:
-  python -m unistudy upcoming
-  python -m unistudy mirror course=all
-  python -m unistudy pubmed query="person-centred care psychiatry" max=5
+  python -m unitoolkit upcoming
+  python -m unitoolkit mirror course=all
+  python -m unitoolkit pubmed query="person-centred care psychiatry" max=5
 """
 import json
 import sys

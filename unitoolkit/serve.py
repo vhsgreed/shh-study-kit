@@ -7,7 +7,7 @@ Chrome extension, and without the plugin ever needing a Canvas token.
 
 Binds loopback only. Reach it from another machine with `tailscale serve`:
 
-    python -m unistudy serve                 # 127.0.0.1:8790
+    python -m unitoolkit serve                 # 127.0.0.1:8790
     tailscale serve --bg 8790              # https://<host>.<tailnet>.ts.net/
 
 Endpoints (all GET, JSON):
@@ -50,7 +50,7 @@ def _cached_index():
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "unistudy"
+    server_version = "unitoolkit"
     protocol_version = "HTTP/1.1"
 
     def log_message(self, format, *args):  # noqa: A002 - matches the base signature
@@ -64,6 +64,9 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "content-type")
             self.send_header("Access-Control-Max-Age", "600")
+        # Chrome refuses a loopback fetch from an https page (Private Network Access) unless
+        # the server answers the preflight with this header.
+        self.send_header("Access-Control-Allow-Private-Network", "true")
 
     def _json(self, obj, code=200):
         body = json.dumps(obj, ensure_ascii=False, default=str).encode("utf-8")
@@ -85,7 +88,7 @@ class Handler(BaseHTTPRequestHandler):
         q = {k: v for k, v in urllib.parse.parse_qsl(u.query)}
         try:
             if u.path in ("/", "/health"):
-                return self._json({"ok": True, "service": "unistudy", "version": _version(),
+                return self._json({"ok": True, "service": "unitoolkit", "version": _version(),
                                    "tools": len(TOOLS), "cached": _cached_index()})
             if u.path == "/courses":
                 return self._json(call("courses", {}))
@@ -139,7 +142,7 @@ def serve(host="127.0.0.1", port=PORT):
             last = e
     if httpd is None:
         raise SystemExit(f"no free port in {port}-{port + 5}: {last}")
-    print(f"unistudy serving on http://{host}:{port}", flush=True)
+    print(f"unitoolkit serving on http://{host}:{port}", flush=True)
     print("  tailscale serve --bg " + str(port) + "   # then https://<machine>.<tailnet>.ts.net/",
           flush=True)
     try:

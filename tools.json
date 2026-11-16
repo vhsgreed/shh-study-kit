@@ -209,6 +209,9 @@
     },
     "only_contains": {
      "type": "string"
+    },
+    "links": {
+     "type": "boolean"
     }
    },
    "required": [

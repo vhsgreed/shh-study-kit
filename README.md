@@ -1,13 +1,13 @@
-# unistudy
+# unitoolkit
 
 **Give your agent the student's whole university, read-only.** Canvas, SharePoint, Ladok,
 TimeEdit, PubMed and Libris, as 13 tools behind one MCP server. Built for nursing students
 at Sophiahemmet Högskola. The Canvas half works at any Canvas school.
 
 ```bash
-claude mcp add unistudy -- python3 -m unistudy.mcp      # Claude Code
-codex mcp add unistudy -- python3 -m unistudy.mcp       # Codex
-# Hermes, Cursor, anything MCP: command `python3 -m unistudy.mcp`, cwd = this repo
+claude mcp add unitoolkit -- python3 -m unitoolkit.mcp      # Claude Code
+codex mcp add unitoolkit -- python3 -m unitoolkit.mcp       # Codex
+# Hermes, Cursor, anything MCP: command `python3 -m unitoolkit.mcp`, cwd = this repo
 ```
 
 Then ask your agent "what is due this week?" and let it work.
@@ -16,9 +16,9 @@ Then ask your agent "what is due this week?" and let it work.
 - **Start with [`skill/SKILL.md`](skill/SKILL.md).** It is written for you: tool table,
   rules, and the pitfalls that cost us an afternoon.
 - **Schemas:** [`tools.json`](tools.json) (MCP `inputSchema` format, regenerate with
-  `python -m unistudy manifest > tools.json`).
-- **CLI fallback:** `python -m unistudy <tool> key=value ...`, JSON on stdout, errors on stderr.
-- **Extend:** add one decorated function in [`unistudy/tools.py`](unistudy/tools.py). It shows up
+  `python -m unitoolkit manifest > tools.json`).
+- **CLI fallback:** `python -m unitoolkit <tool> key=value ...`, JSON on stdout, errors on stderr.
+- **Extend:** add one decorated function in [`unitoolkit/tools.py`](unitoolkit/tools.py). It shows up
   in the CLI, the MCP server and the manifest at once. See [`AGENTS.md`](AGENTS.md).
 
 ## Tools
@@ -35,11 +35,11 @@ courses mapped with kursplan and litteraturlista, MCP handshake and tool calls v
 
 ## Setup
 ```bash
-git clone https://github.com/vhsgreed/unistudy && cd unistudy
+git clone https://github.com/vhsgreed/unitoolkit && cd unitoolkit
 pip install websockets          # only for the browser tools; the rest is stdlib
 echo "<canvas token>" > ~/.secrets/CANVAS_TOKEN && chmod 600 ~/.secrets/CANVAS_TOKEN
 # browser tools: a separate Chrome profile with CDP, log in once by hand
-google-chrome --user-data-dir=$HOME/.config/unistudy-chrome --remote-debugging-port=9233
+google-chrome --user-data-dir=$HOME/.config/unitoolkit-chrome --remote-debugging-port=9233
 ```
 Other schools: `export CANVAS_BASE=https://<school>.instructure.com`.
 

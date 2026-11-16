@@ -1,7 +1,7 @@
 """One tool registry for every surface: CLI, MCP server, tools.json manifest.
 
 Each tool is a plain function with a JSON-schema'd signature. Add a tool here and it
-appears in `python -m unistudy <name>`, in the MCP server, and in `tools.json`.
+appears in `python -m unitoolkit <name>`, in the MCP server, and in `tools.json`.
 All tools are read-only toward the school's systems; the only writes are local files.
 """
 import json
@@ -174,11 +174,16 @@ def search(course, query, source="auto", regex=False, fuzzy=False, whole_word=Fa
       "ocr=true adds tesseract for documents with no usable text layer; it is slow, so it is "
       "not part of a normal index run.",
       {"course": S, "ocr": B, "force": B, "max_files": I, "ocr_max_pages": I,
-       "only_contains": S}, ["course"])
-def docs(course, ocr=False, force=False, max_files=None, ocr_max_pages=60, only_contains=None):
+       "only_contains": S, "links": B}, ["course"])
+def docs(course, ocr=False, force=False, max_files=None, ocr_max_pages=60, only_contains=None,
+         links=False):
     from . import docs as d
-    return d.build(course, ocr=ocr, force=force, max_files=max_files,
-                   ocr_max_pages=ocr_max_pages, only_contains=only_contains)
+    out = {"files": d.build(course, ocr=ocr, force=force, max_files=max_files,
+                            ocr_max_pages=ocr_max_pages, only_contains=only_contains)}
+    if links:
+        # shares are not in /files at all; they live only as links inside pages
+        out["links"] = d.resolve_links(course, allow_ocr=ocr)
+    return out
 
 
 # ---------------------------------------------------------- Session surface

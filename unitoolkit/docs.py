@@ -17,8 +17,8 @@ OCR is deliberately not part of every index run: it is slow (1.5-3 s per page at
 and most files do not need it. It runs when a document has no usable text layer, is capped,
 and its result is cached like any other text.
 
-    python -m unistudy docs course=2416                 # text layer only, fast
-    python -m unistudy docs course=2416 ocr=true        # plus OCR for image-only files
+    python -m unitoolkit docs course=2416                 # text layer only, fast
+    python -m unitoolkit docs course=2416 ocr=true        # plus OCR for image-only files
 """
 import hashlib
 import html
@@ -33,7 +33,7 @@ import zipfile
 
 from . import canvas
 
-CACHE = pathlib.Path.home() / ".cache/unistudy/docs"
+CACHE = pathlib.Path.home() / ".cache/unitoolkit/docs"
 
 TEXT_EXTS = {"txt", "md", "csv", "json", "html", "htm", "xml", "py", "js", "css"}
 IMAGE_EXTS = {"png", "jpg", "jpeg", "gif", "bmp", "tif", "tiff"}
@@ -283,6 +283,81 @@ def build(course_id, ocr=False, force=False, max_files=None, ocr_max_pages=60,
             stats["no_text"] += 1
             if payload.get("needs_ocr"):
                 stats["needs_ocr"] += 1
+    return stats
+
+
+HREF_RE = re.compile(r'href="([^"]+)"', re.I)
+
+
+def page_links(course_id, mirror_root=None):
+    """Every link inside the course's pages, deduped, classified.
+
+    Pages line up with the mirror; without a mirror nothing is read, which keeps this from
+    turning into a page crawl of its own.
+    """
+    root = pathlib.Path(mirror_root or (pathlib.Path.home() / "courses/canvas" / str(course_id)))
+    pages = root / "pages"
+    if not pages.exists():
+        return []
+    seen, out = set(), []
+    for p in sorted(pages.glob("*.html")):
+        for url in HREF_RE.findall(p.read_text(errors="ignore")):
+            url = html.unescape(url).strip()
+            if not url or url.startswith(("#", "mailto:", "javascript:")) or url in seen:
+                continue
+            seen.add(url)
+            kind = "other"
+            if re.search(r"/files/\d+", url):
+                kind = "canvas_file"
+            elif re.search(r"/pages/", url):
+                kind = "canvas_page"
+            elif re.search(r"sharepoint\.com/:[a-z]:/", url, re.I):
+                kind = "share"
+            elif re.search(r"(kaltura|youtube|vimeo)", url, re.I):
+                kind = "video"
+            out.append({"url": url, "kind": kind, "from": p.name})
+    return out
+
+
+def resolve_links(course_id, limit=None, allow_ocr=False, progress=None):
+    """Fetch linked documents that are not in the file tree (SharePoint share links) and
+    cache their text alongside the course files. Bytes are read once and dropped."""
+    from . import sharepoint
+
+    links = [l for l in page_links(course_id) if l["kind"] == "share"]
+    if limit:
+        links = links[:limit]
+    stats = {"course": course_id, "share_links": len(links), "stored": 0, "cached": 0,
+             "failed": 0, "with_text": 0, "no_text": 0, "chars": 0, "by_kind": {}}
+    for i, link in enumerate(links, 1):
+        url = link["url"]
+        if progress:
+            progress(f"{i}/{len(links)} {url[-28:]}")
+        meta = {"id": f"share:{url}", "updated_at": "fixed"}  # a share link has no version
+        hit = read_cached(course_id, meta)
+        if hit:
+            stats["cached"] += 1
+            payload = hit
+        else:
+            body, kind, name = sharepoint.fetch_share(url)
+            if not body:
+                stats["failed"] += 1
+                continue
+            name = name or f"share-{len(body)}.{kind}"
+            info = extract(name, body, allow_ocr=allow_ocr)
+            stats["stored"] += 1
+            payload = {"id": meta["id"], "name": name, "ext": info["kind"],
+                       "updated_at": "", "href": url, "url": url,
+                       "bytes": len(body), "pages": info["text"].count("\f") + 1,
+                       "pages_total": info.get("pages_total"),
+                       "ocr_pages": info["ocr_pages"], "needs_ocr": info["needs_ocr"],
+                       "ocr_truncated": bool(info.get("ocr_truncated")),
+                       "text": info["text"]}
+            write_cached(course_id, meta, payload)
+        stats["by_kind"][payload.get("ext") or "?"] = stats["by_kind"].get(payload.get("ext") or "?", 0) + 1
+        n = len((payload.get("text") or "").strip())
+        stats["chars"] += n
+        stats["with_text" if n >= MIN_USEFUL_CHARS else "no_text"] += 1
     return stats
 
 
