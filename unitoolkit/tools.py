@@ -30,6 +30,30 @@ I = {"type": "integer"}
 B = {"type": "boolean"}
 
 
+# ------------------------------------------------------------------- Ladok
+
+@tool("ladok_windows",
+      "Ladok registration windows (kursregistrering + tentamensanmälan): what opens when, "
+      "what closes within N days, with course period. Needs the agent Chrome logged in to "
+      "Ladok (CDP :9233); read-only, never registers anything. Subrepo: ladok_vakt/.",
+      {"close_days": I})
+def ladok_windows(close_days=None):
+    """Silent-by-default watcher logic, exposed as a one-shot read for agents."""
+    import sys
+    _vendor = pathlib.Path(__file__).resolve().parents[1] / 'vendor' / 'ladok-vakt'
+    if str(_vendor) not in sys.path:
+        sys.path.insert(0, str(_vendor))
+    from ladok_vakt import core
+    cfg = core.Config()
+    if close_days is not None:
+        cfg.close_days = int(close_days)
+    try:
+        rows = core.run(cfg, alert=False, email=False)
+    except core.Fault as exc:
+        return {"error": str(exc), "hint": "log in to Ladok in the agent Chrome on :9233"}
+    return {"windows": rows, "state": str(cfg.state_file)}
+
+
 # ---------------------------------------------------------------- Canvas (token)
 
 @tool("courses", "List the student's Canvas courses: id, code, name, term.")

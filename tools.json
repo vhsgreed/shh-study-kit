@@ -1,5 +1,19 @@
 [
  {
+  "name": "ladok_windows",
+  "description": "Ladok registration windows (kursregistrering + tentamensanmälan): what opens when, what closes within N days, with course period. Needs the agent Chrome logged in to Ladok (CDP :9233); read-only, never registers anything. Subrepo: ladok_vakt/.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "close_days": {
+     "type": "integer"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "courses",
   "description": "List the student's Canvas courses: id, code, name, term.",
   "inputSchema": {
