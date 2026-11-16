@@ -8,6 +8,10 @@ You are an agent working in or with this repo.
   any change run `python3 -m unitoolkit manifest > tools.json` and the MCP smoke test below.
 - **Never commit** course content, tokens, cookies, or anything under `~/courses`.
 
+`vendor/ladok-vakt` is a subtree of https://github.com/vhsgreed/ladok-vakt. Never edit
+files under it here: change them in that repo, pull the subtree back. The
+`ladok_windows` tool wraps it.
+
 MCP smoke test:
 ```bash
 printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \

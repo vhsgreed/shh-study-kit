@@ -1,7 +1,7 @@
 # unitoolkit
 
 **Give your agent the student's whole university, read-only.** Canvas, SharePoint, Ladok,
-TimeEdit, PubMed and Libris, as 13 tools behind one MCP server. Built for nursing students
+TimeEdit, PubMed and Libris, as 17 tools behind one MCP server. Built for nursing students
 at Sophiahemmet Högskola. The Canvas half works at any Canvas school.
 
 ```bash
@@ -27,11 +27,27 @@ Then ask your agent "what is due this week?" and let it work.
 | `upcoming`, `courses`, `assignment`, `mirror`, `canvas_get` | Canvas REST | personal access token |
 | `login_check`, `page`, `fetch` | any SSO site | logged-in agent browser (CDP) |
 | `sharepoint_download`, `programme` | SharePoint, shh.se | logged-in agent browser |
+| `ladok_windows` | Ladok studentwebb (subrepo [`vendor/ladok-vakt`](vendor/ladok-vakt)) | logged-in agent browser |
 | `timeedit` | TimeEdit | none |
 | `pubmed`, `libris` | NCBI E-utilities, Libris | none |
 
 All tested live against SHH on 2026-11-15: 3 Canvas courses mirrored, 21 of 21 programme
 courses mapped with kursplan and litteraturlista, MCP handshake and tool calls verified.
+
+## Subrepo: ladok-vakt
+
+[`vendor/ladok-vakt`](vendor/ladok-vakt) is a git subtree of
+[ladok-vakt](https://github.com/vhsgreed/ladok-vakt): mejl när Ladok-anmälan öppnar
+(email alerts for registration windows). It is here because a Canvas mirror answers
+"what is due" and Ladok answers "what can I still register for", and a student needs
+both. Sync it with:
+
+```bash
+git subtree pull --prefix=vendor/ladok-vakt https://github.com/vhsgreed/ladok-vakt main --squash
+```
+
+The `ladok_windows` tool is a thin read-only wrapper around it. Run the watcher
+itself (with mail and cron) from the standalone repo.
 
 ## Setup
 ```bash
