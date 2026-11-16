@@ -1,0 +1,10 @@
+[Unit]
+Description=ladok-vakt once a day
+
+[Timer]
+OnCalendar=*-*-* 07:10:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
