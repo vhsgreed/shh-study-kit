@@ -1,0 +1,13 @@
+[Unit]
+Description=ladok-vakt: check Ladok registration windows
+Documentation=https://github.com/vhsgreed/ladok-vakt
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/src/ladok-vakt
+Environment=LADOK_MAIL_TO=you@example.com
+# Environment=LADOK_LAROSATE=38
+# Environment=LADOK_RESEND_KEY_FILE=%h/.secrets/RESEND_KEY
+ExecStart=/usr/bin/python3 -m ladok_vakt
+# A failing unit shows up in `systemctl --user status`; the script also mails faults.
+SuccessExitStatus=0
