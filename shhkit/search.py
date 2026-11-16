@@ -53,8 +53,20 @@ def strip_html(h):
     return re.sub(r"\n{2,}", "\n", s).strip()
 
 
+_FOLD1 = str.maketrans("åäöéèÅÄÖÉ", "aaoeeAAOE")
+
+
+def norm_len(s):
+    """Lowercase + diacritic fold that preserves length exactly, so offsets survive.
+
+    Offsets measured in a whitespace-collapsed string drift, and a folded string of a
+    different length points at the wrong page of a document.
+    """
+    return (s or "").lower().translate(_FOLD1)
+
+
 def norm_keep(s):
-    """Lowercase + Swedish folding, but keeps "\\n" so block boundaries survive."""
+    """Lowercase + Swedish folding, but keeps "\n" so block boundaries survive."""
     s = (s or "").lower().replace("å", "a").replace("ä", "a").replace("ö", "o").replace("é", "e")
     return re.sub(r"[ \t]+", " ", s)
 
@@ -403,8 +415,21 @@ def _match(doc, q, case_sensitive=False, fuzzy=False, whole_word=False):
         if not c:
             return None
         if at < 0:
-            pos = hay.find(anchor)
-            at = pos if pos >= 0 else 0
+            # offsets must be measured in the original text: fold() collapses whitespace,
+            # so a folded offset drifts and page numbers and snippets land in the wrong place
+            # A phrase may match only after folding (a line break inside it), so locate its
+            # leading words with whitespace tolerance. Whole phrase first, then fewer words,
+            # so "sida 100 text" is not located at the first "sida" on page 1.
+
+            hay_norm = hay_src if case_sensitive else norm_len(hay_src)
+            target = anchor if case_sensitive else norm_len(anchor)
+            words = [w for w in re.split(r"\s+", target) if w][:3]
+            at = 0
+            for n in range(len(words), 0, -1):
+                m = re.search(r"\s+".join(re.escape(w) for w in words[:n]), hay_norm)
+                if m:
+                    at = m.start()
+                    break
         best = best if len(best) > len(anchor) else anchor
         score += (12 if anchor in title else 0) + min(c, 6)
     if doc["type"] in ("anvisning", "sida"):

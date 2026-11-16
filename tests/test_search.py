@@ -4,6 +4,7 @@
 """
 import unittest
 
+from shhkit import docs as DOCS
 from shhkit import search as S
 
 
@@ -180,6 +181,17 @@ class SearchTests(unittest.TestCase):
             hit = res["hits"][0]
             self.assertTrue(hit["anchor"], query)
             self.assertIn(hit["anchor"], hit["body"], query)
+
+    def test_offset_is_measured_in_the_original_text(self):
+        # regression: a match on page 100 of a book was reported as page 4, because the
+        # offset came from the whitespace-collapsed string
+        pages = ["sida " + str(i) + " text  med   glest  mellanrum" for i in range(1, 101)]
+        body = "\f".join(pages)
+        idx = {"course_id": "1", "source": "t", "docs": [S._doc(
+            "fildok", "bok.pdf", body, "/courses/1/files/1")]}
+        hit = S.run(idx, '"sida 100 text"')["hits"][0]
+        self.assertIn("sida 100", hit["snippet"], hit["snippet"])
+        self.assertEqual(DOCS.page_of(hit["body"], hit["at"]), 100)
 
     def test_snippet_contains_match(self):
         d = doc("sida", "T", "x" * 400 + " needle " + "y" * 400)

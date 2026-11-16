@@ -112,6 +112,18 @@ def pdf_text(data):
         return r.stdout or ""
 
 
+def pdf_pages(data):
+    """Real page count from the PDF itself, so a capped OCR run can say it was capped."""
+    if not _have("pdfinfo"):
+        return None
+    with tempfile.TemporaryDirectory() as td:
+        src = pathlib.Path(td) / "in.pdf"
+        src.write_bytes(data)
+        r = _run(["pdfinfo", str(src)])
+        m = re.search(r"^Pages:\s+(\d+)", r.stdout or "", re.M)
+        return int(m.group(1)) if m else None
+
+
 def ocr_pdf(data, max_pages=60, dpi=300, lang="swe"):
     """Render pages to PNG and OCR them. Returns (text, pages_ocred)."""
     if not (_have("pdftoppm") and _have("tesseract")):
@@ -151,9 +163,12 @@ def extract(name, data, allow_ocr=False, ocr_max_pages=60):
         info["text"] = text
         if thin:
             info["needs_ocr"] = True
+            info["pages_total"] = pdf_pages(data)
             if allow_ocr:
                 ocr, n = ocr_pdf(data, max_pages=ocr_max_pages)
                 info["ocr_pages"] = n
+                # a capped run must be visible, or a half-read book looks complete
+                info["ocr_truncated"] = bool(info["pages_total"] and n < info["pages_total"])
                 if len(ocr.strip()) > len(text.strip()):
                     info["text"] = ocr
         return info
@@ -208,11 +223,15 @@ def write_cached(course_id, file_meta, payload):
 
 # ---------------------------------------------------------------- build
 def build(course_id, ocr=False, force=False, max_files=None, ocr_max_pages=60,
-          max_bytes=40 * 1024 * 1024, progress=None):
+          max_bytes=40 * 1024 * 1024, only_contains=None, progress=None):
     """Extract text for every file in a course. Cached by file id + updated_at."""
     files = canvas.try_get(f"courses/{course_id}/files", per_page=100) or []
     files = [f for f in files if isinstance(f, dict)]
     files.sort(key=lambda f: (f.get("display_name") or "").lower())
+    if only_contains:
+        needle = only_contains.lower()
+        files = [f for f in files
+                 if needle in (f.get("display_name") or f.get("filename") or "").lower()]
     if max_files:
         files = files[:max_files]
 
@@ -247,8 +266,12 @@ def build(course_id, ocr=False, force=False, max_files=None, ocr_max_pages=60,
                        "updated_at": f.get("updated_at") or f.get("created_at") or "",
                        "href": f"/courses/{course_id}/files/{f.get('id')}",
                        "url": url, "bytes": len(data), "pages": info["text"].count("\f") + 1,
+                       "pages_total": info.get("pages_total"),
                        "ocr_pages": info["ocr_pages"], "needs_ocr": info["needs_ocr"],
+                       "ocr_truncated": bool(info.get("ocr_truncated")),
                        "text": info["text"]}
+            if payload["ocr_truncated"]:
+                stats["ocr_truncated"] = stats.get("ocr_truncated", 0) + 1
             write_cached(course_id, f, payload)
         kind = payload.get("ext") or "?"
         stats["by_kind"][kind] = stats["by_kind"].get(kind, 0) + 1

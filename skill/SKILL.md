@@ -77,3 +77,16 @@ the schemas. CLI: `python -m shhkit <tool> k=v ...`, JSON on stdout.
 - A TimeEdit link covers only the window it was made for; date-range parameters on a
   saved link return nothing. Ask for a new link for a new period.
 - The SHH library host (`biblioteket.shh.se`) may be unreachable from off-campus networks.
+- Canvas files are behind viewer chrome: `?wrap=1`, `?module_item_id=`, `folder?preview=<id>`.
+  Strip to `/files/<id>` and the API serves the file itself.
+- Assignments need `include[]=rubric`: without it Canvas returns `rubric: []` and the grading
+  criteria are silently missing from any index.
+- Offsets for snippets and page numbers must be measured in the **original** text. `fold()`
+  collapses whitespace and folds diacritics, so offsets taken in the folded string land on the
+  wrong page. `norm_len()` keeps length; locate a phrase by its leading words with `\s+`
+  tolerance, since a phrase can match only across a line break.
+- A phrase query through the CLI needs `--json`: `parse()` runs `json.loads` on each value, so
+  `query="\"two words\""` arrives as an AND of words, not a phrase.
+- OCR is opt-in (`ocr=true`) and capped; `pages_total` vs `ocr_pages` plus `ocr_truncated`
+  shows whether a book was only partly read.
+- Port 8790 on geekom is the agentrecourse site preview; `serve` therefore defaults to 8791.

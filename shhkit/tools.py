@@ -173,11 +173,12 @@ def search(course, query, source="auto", regex=False, fuzzy=False, whole_word=Fa
       "images) and cache it keyed by file id + updated_at. Bytes are discarded, text is kept. "
       "ocr=true adds tesseract for documents with no usable text layer; it is slow, so it is "
       "not part of a normal index run.",
-      {"course": S, "ocr": B, "force": B, "max_files": I, "ocr_max_pages": I}, ["course"])
-def docs(course, ocr=False, force=False, max_files=None, ocr_max_pages=60):
+      {"course": S, "ocr": B, "force": B, "max_files": I, "ocr_max_pages": I,
+       "only_contains": S}, ["course"])
+def docs(course, ocr=False, force=False, max_files=None, ocr_max_pages=60, only_contains=None):
     from . import docs as d
     return d.build(course, ocr=ocr, force=force, max_files=max_files,
-                   ocr_max_pages=ocr_max_pages)
+                   ocr_max_pages=ocr_max_pages, only_contains=only_contains)
 
 
 # ---------------------------------------------------------- Session surface
