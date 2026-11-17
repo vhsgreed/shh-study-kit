@@ -31,6 +31,9 @@ CHECKS = [
     ('apa from doi', 'apa', {'doi': '10.1111/inr.13079'},
      lambda r: r['apa'].startswith('Cho, H.') and '72(3)' in r['apa']),
     ('pubmed', 'pubmed', {'query': 'delirium prevention', 'max': 2}, lambda r: len(r) == 2),
+    ('timeedit course', 'schedule', {'query': '1SPRY2', 'kind': 'code', 'start': '0.d', 'end': '8.w'},
+     lambda r: r['objects'] and isinstance(r['bookings'], list)),
+    ('timeedit rooms', 'free_rooms', {}, lambda r: len(r['rooms']) >= 5),
     ('library catalogue', 'koha_search', {'q': 'omvårdnad', 'limit': 2}, lambda r: len(r) >= 1),
 ]
 

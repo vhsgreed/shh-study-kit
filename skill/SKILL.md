@@ -38,7 +38,8 @@ keeps the rest callable by name; `UNITOOLKIT_TOOLS=all` lists everything. CLI:
 | "Get me the article" | `db_fulltext doi=` |
 | "What does the assignment ask?" | `assignment` / `search course= query=` |
 | "Is the book in?" / "When are my books due?" | `library query=` / `library` |
-| "When is the seminar?" | `timeedit` |
+| "When is the seminar?" / "What's on this week?" | `schedule query=1SPRY2` or `query=H26SK kind=group` |
+| "Is there a room free to study in tomorrow?" | `free_rooms date=` |
 
 The full registry, for when the core is not enough:
 
@@ -134,8 +135,17 @@ Rules for this part:
   URL, before deciding the human is logged in.
 - SharePoint folder REST endpoints return AccessDenied for students. Share links via
   `download.aspx?share=<docid>` work.
-- A TimeEdit link covers only the window it was made for; date-range parameters on a
-  saved link return nothing. Ask for a new link for a new period.
+- A saved TimeEdit link covers only the window it was made for; date-range parameters on it
+  return nothing. Don't use saved links: `schedule` searches the public guide (sid=5) by course
+  code or student group and passes the period itself (`p=YYYYMMDD.x,YYYYMMDD.x`). Set
+  `UNITOOLKIT_GROUP` (e.g. H26SK) and `today` carries the cohort's week.
+- TimeEdit object types are 5=Kurs, 21=Kurskod, 6=Grupp, 4=Sal, 8=Ämne, 9=Undervisningsform. The
+  numbers on the page's filter boxes (11, 19, 20, ...) are room attributes, not object types.
+  Course names are not indexed: search the code.
+- "Boka salar" (ri1Q3, sid=8) needs the school SSO, but only to learn which rooms students may
+  book; their occupancy is in the public guide. Query rooms one at a time: a combined query
+  returns some rows whose room column is empty and cannot be attributed. `free_rooms` applies
+  the booking rules (Mon-Fri 08-20, 3 days ahead, max 4 h) and never books.
 - The SHH library host (`biblioteket.shh.se`) drops port 443 from some home IPs and answers
   plain HTTP clients with Cloudflare 429. Only a real browser behind a proxy reads it, and the
   proxy exit must be **sticky**: Koha binds the session to the client IP ("You are logging from

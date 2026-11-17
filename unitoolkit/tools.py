@@ -57,6 +57,27 @@ def doctor(only=None):
     return agent.doctor(only)
 
 
+@tool("schedule",
+      "Timetable for any course code (1SPRY2), student group (H26SK) or room, for any period, "
+      "from TimeEdit without a login. kind=code|group|room|subject. start/end as YYYY-MM-DD or "
+      "TimeEdit relative form (0.d = today, 4.w = four weeks). Course NAMES are not indexed: "
+      "search the code or the group.",
+      {"query": S, "kind": S, "start": S, "end": S}, ["query"])
+def schedule(query, kind="code", start="0.d", end="14.d"):
+    from . import timeedit
+    return timeedit.schedule(query, kind or "code", start or "0.d", end or "14.d")
+
+
+@tool("free_rooms",
+      "Which student-bookable rooms are free on a date (default today), as gaps between "
+      "bookings within the booking rules (Mon-Fri 08-20, up to 3 days ahead, max 4 h). "
+      "Read-only: booking itself is done by the student in TimeEdit.",
+      {"date": S, "min_minutes": I})
+def free_rooms(date=None, min_minutes=60):
+    from . import timeedit
+    return timeedit.free_rooms(date or None, min_minutes or 60)
+
+
 @tool("library",
       "The school library (Koha). With query: catalogue search with availability per copy. "
       "Without: the student's own loans with due dates and days left, holds and fines.",

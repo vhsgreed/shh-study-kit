@@ -18,7 +18,7 @@ import os
 import time
 
 CORE = ('today', 'doctor', 'find_sources', 'db_fulltext', 'search', 'assignment', 'library',
-        'timeedit')
+        'schedule', 'free_rooms')
 
 
 def listed(all_tools):
@@ -90,10 +90,15 @@ def _loans_due(days):
 
 
 def _schedule(days):
+    group = os.environ.get('UNITOOLKIT_GROUP', '').strip()
+    if group:                                       # the whole cohort, any period, no login
+        from . import timeedit
+        end = (dt.date.today() + dt.timedelta(days=days)).isoformat()
+        return timeedit.schedule(group, 'group', dt.date.today().isoformat(), end)['bookings']
     url = os.environ.get('UNITOOLKIT_TIMEEDIT_URL', '').strip()
     if not url:
-        raise RuntimeError('no timetable link set: put a TimeEdit .html link in '
-                           'UNITOOLKIT_TIMEEDIT_URL')
+        raise RuntimeError('no timetable configured: set UNITOOLKIT_GROUP to your student group '
+                           '(e.g. H26SK), or UNITOOLKIT_TIMEEDIT_URL to a saved TimeEdit link')
     from .tools import call
     today = dt.date.today()
     return [b for b in call('timeedit', {'url': url})
@@ -190,9 +195,16 @@ def _check_library():
 
 
 def _check_timeedit():
+    group = os.environ.get('UNITOOLKIT_GROUP', '').strip()
+    if group:
+        from . import timeedit
+        hits = timeedit.find(group, 'group')
+        if not hits:
+            return 'fail', 'TimeEdit has no group %r' % group, 'set UNITOOLKIT_GROUP to the group on your timetable (e.g. H26SK)'
+        return 'ok', 'group %s found (%d subgroups)' % (group, len(hits)), ''
     url = os.environ.get('UNITOOLKIT_TIMEEDIT_URL', '').strip()
     if not url:
-        return 'warn', 'no timetable link configured', 'set UNITOOLKIT_TIMEEDIT_URL to a TimeEdit .html link'
+        return 'warn', 'no timetable configured', 'set UNITOOLKIT_GROUP to your student group (e.g. H26SK)'
     from .tools import call
     n = len(call('timeedit', {'url': url}))
     return ('ok' if n else 'warn'), '%d bookings in the saved link' % n, (
