@@ -6,6 +6,9 @@ Register it in any MCP client, e.g. Claude Code:
     claude mcp add unitoolkit -- python -m unitoolkit.mcp
 Hermes (config.yaml):
     mcp_servers: {unitoolkit: {command: python3, args: [-m, unitoolkit.mcp]}}
+
+Lists the question-shaped core tools by default (agent.CORE); UNITOOLKIT_TOOLS=all lists all,
+or give a comma list. Every tool is callable by name regardless of what is listed.
 """
 import json
 import sys
@@ -33,12 +36,16 @@ def handle(req):
         return {"protocolVersion": params.get("protocolVersion", PROTOCOL),
                 "capabilities": {"tools": {"listChanged": False}},
                 "serverInfo": {"name": "unitoolkit", "version": __version__},
-                "instructions": ("Read-only access to a student's own Canvas, SharePoint, Ladok "
-                                 "and TimeEdit, plus PubMed and Libris. Start with `upcoming`. "
-                                 "SSO tools need the agent browser on CDP :9233; run "
-                                 "`login_check` first and ask the human to log in if false.")}
+                "instructions": ("Read-only access to a student's own school systems: Canvas, "
+                                 "Ladok, the library, the timetable, and the subscribed research "
+                                 "databases. Start with `today` for 'what do I need to do', "
+                                 "`find_sources` for 'find me sources'. When anything fails, run "
+                                 "`doctor`: it names the fix, which is always a human action "
+                                 "(sign in once, renew a token). Never type a password. "
+                                 "Set UNITOOLKIT_TOOLS=all to list every tool.")}
     if method == "tools/list":
-        return {"tools": manifest()}
+        from .agent import listed
+        return {"tools": manifest(listed(list(TOOLS)))}
     if method == "tools/call":
         name = params.get("name")
         try:

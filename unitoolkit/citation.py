@@ -124,7 +124,9 @@ def find_sources(query, databases=('cinahl', 'pubmed', 'cochrane'), limit=5, wit
                          'doi': h.get('doi') or '', 'pmid': h.get('pmid') or '',
                          'database': 'PubMed'} for h in (hits or [])]
             else:
-                res = dbs.search(name, query, limit=limit)
+                # ask for more than we keep: the relevance re-rank needs candidates, since
+                # Cochrane's own order puts off-topic reviews first
+                res = dbs.search(name, query, limit=max(limit * 4, 20) if name == 'cochrane' else limit)
                 totals[res['database']] = _total(res.get('total'))
                 rows = res['results']
         except Exception as e:                    # one database failing must not hide the rest

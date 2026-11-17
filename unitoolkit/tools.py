@@ -30,6 +30,42 @@ I = {"type": "integer"}
 B = {"type": "boolean"}
 
 
+# ------------------------------------------------------------- Agent surface
+# Question-shaped tools. The MCP server lists these by default (unitoolkit/agent.py: CORE);
+# UNITOOLKIT_TOOLS=all lists everything. All tools stay callable by name.
+
+@tool("today",
+      "START HERE for 'what do I need to do?'. Everything due in the next N days (default 14) "
+      "from every system at once: Canvas deadlines not yet submitted, Ladok registration "
+      "windows open now or opening soon, this week's timetable, and (library=true) library "
+      "loans due back. "
+      "Each section reports its own error, so one dead session never hides the rest.",
+      {"days": I, "library": B})
+def today(days=14, library=False):
+    from . import agent
+    return agent.today(days or 14, library=bool(library))
+
+
+@tool("doctor",
+      "Health check of every session the toolkit depends on (Canvas token and its expiry date, "
+      "agent browser, Ladok, database proxy, library, timetable link). Each row has the fix, "
+      "which is always a human action. Run it when another tool fails. only='canvas,ladok' "
+      "limits the checks.",
+      {"only": S})
+def doctor(only=None):
+    from . import agent
+    return agent.doctor(only)
+
+
+@tool("library",
+      "The school library (Koha). With query: catalogue search with availability per copy. "
+      "Without: the student's own loans with due dates and days left, holds and fines.",
+      {"query": S, "limit": I})
+def library(query=None, limit=10):
+    from . import agent
+    return agent.library(query, limit or 10)
+
+
 # ------------------------------------------------------------------- Ladok
 
 @tool("ladok_windows",
@@ -38,7 +74,12 @@ B = {"type": "boolean"}
       "Ladok (CDP :9233); read-only, never registers anything. Subrepo: ladok_vakt/.",
       {"close_days": I})
 def ladok_windows(close_days=None):
-    """Silent-by-default watcher logic, exposed as a one-shot read for agents."""
+    """Structured rows, not the watcher's text lines.
+
+    core.run() is the cron path: it returns human lines and turns a missing session into a
+    "VARNING" line, which an agent would read as data. Here a fault is an error field, and
+    LADOK_AUTOLOGIN=1 (with LADOK_IDP_ENTITY) lets it restore the session once first.
+    """
     import sys
     _vendor = pathlib.Path(__file__).resolve().parents[1] / 'vendor' / 'ladok-vakt'
     if str(_vendor) not in sys.path:
@@ -48,10 +89,23 @@ def ladok_windows(close_days=None):
     if close_days is not None:
         cfg.close_days = int(close_days)
     try:
-        rows = core.run(cfg, alert=False, email=False)
+        try:
+            uid, reg_xml, exam_xml = core.fetch(cfg)
+        except core.Fault:
+            if not cfg.autologin:
+                raise
+            from ladok_vakt.login import login
+            login(cfg)
+            uid, reg_xml, exam_xml = core.fetch(cfg)
     except core.Fault as exc:
-        return {"error": str(exc), "hint": "log in to Ladok in the agent Chrome on :9233"}
-    return {"windows": rows, "state": str(cfg.state_file)}
+        return {"error": str(exc),
+                "hint": "sign in to Ladok once in the agent browser (CDP :9233), or set "
+                        "LADOK_AUTOLOGIN=1 and LADOK_IDP_ENTITY for the opt-in re-login"}
+    rows = core.pending_actions(core.parse_registrations(reg_xml) + core.parse_exams(exam_xml))
+    for r in rows:
+        r["days_to_open"] = core.days_until(r.get("reg_opens"))
+        r["days_to_close"] = core.days_until(r.get("reg_closes"))
+    return {"windows": rows, "urgent": core.urgent(rows, cfg.close_days)}
 
 
 # ---------------------------------------------------------------- Canvas (token)
@@ -451,5 +505,7 @@ def call(name, args=None):
     return TOOLS[name]["fn"](**(args or {}))
 
 
-def manifest():
-    return [{k: v for k, v in t.items() if k != "fn"} for t in TOOLS.values()]
+def manifest(names=None):
+    """Tool schemas. names=None: every tool (tools.json); a list: only those, in that order."""
+    pick = TOOLS.values() if names is None else [TOOLS[n] for n in names if n in TOOLS]
+    return [{k: v for k, v in t.items() if k != "fn"} for t in pick]

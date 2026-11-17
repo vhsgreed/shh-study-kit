@@ -14,6 +14,7 @@ import asyncio
 import json
 import os
 import re
+import urllib.parse
 import urllib.request
 
 CDP = os.environ.get('UNITOOLKIT_CDP_SCHOOL', 'http://127.0.0.1:9233')
@@ -405,10 +406,12 @@ def _search_cochrane(query, limit):
                 raw = json.loads(page.eval(COCHRANE_JS) or '{}')
             except DatabaseError:
                 continue
-            if raw.get('url', '').rstrip('/').endswith('/search') and raw.get('items') is not None:
+            hl = urllib.parse.unquote(raw.get('items', [{}])[0].get('href', '') if raw.get('items') else '')
+            fresh = all(w.lower() in hl.lower() for w in re.findall(r'\w{4,}', query)[:3]) if hl else False
+            if raw.get('url', '').rstrip('/').endswith('/search') and raw.get('items') and fresh:
                 break
     out = []
-    for it in (raw.get('items') or [])[:max(limit, 25)]:
+    for it in (raw.get('items') or [])[:limit]:
         m = re.search(r'/cdsr/doi/(10\.[^/]+/[^/]+)/', it.get('href') or '')
         doi = m.group(1) if m else ''
         lines = [l for l in it.get('lines') or [] if not re.fullmatch(r'\d+', l)]

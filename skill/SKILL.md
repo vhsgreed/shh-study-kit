@@ -26,8 +26,21 @@ Canvas school (`CANVAS_BASE`).
 - Skip for public pages you can fetch directly.
 
 ## Fastest path
-MCP: `python -m unitoolkit.mcp` (stdio). Every tool below is exposed; `tools.json` holds
-the schemas. CLI: `python -m unitoolkit <tool> k=v ...`, JSON on stdout.
+MCP: `python -m unitoolkit.mcp` (stdio). It **lists 8 question-shaped tools** by default and
+keeps the rest callable by name; `UNITOOLKIT_TOOLS=all` lists everything. CLI:
+`python -m unitoolkit <tool> k=v ...`, JSON on stdout. `tools.json` holds every schema.
+
+| Student asks | Call |
+|---|---|
+| "What do I need to do?" | `today` (Canvas deadlines, Ladok windows, timetable; `library=true` adds loans) |
+| "Something is broken" / any tool failed | `doctor`: every session with its fix |
+| "Find me sources on X" | `find_sources` |
+| "Get me the article" | `db_fulltext doi=` |
+| "What does the assignment ask?" | `assignment` / `search course= query=` |
+| "Is the book in?" / "When are my books due?" | `library query=` / `library` |
+| "When is the seminar?" | `timeedit` |
+
+The full registry, for when the core is not enough:
 
 | Tool | Needs | Returns |
 |---|---|---|
@@ -91,6 +104,13 @@ Rules for this part:
    (flatpak: `flatpak run com.google.Chrome ...`), then log in by hand. Never the default
    profile: Chrome refuses CDP there, and it is the human's, not yours.
 
+## Health
+- `doctor` checks the Canvas token (and reads its real expiry date from Canvas), the agent
+  browser, Ladok, the database proxy, the library plumbing and the timetable link. Each failing
+  row says what the human has to do.
+- `scripts/smoke.py` runs one real query per reader and is silent when all pass; run it weekly.
+  It never logs in to the library: failed library logins count against the student's account.
+
 ## Rules
 - Read only. Never submit, post, enrol, or change settings unless the human asks for that
   exact action.
@@ -128,6 +148,9 @@ Rules for this part:
   AND; quotes and explicit operators pass through.
 - EBSCO result cards: the source line can sit on the authors' line (`By:...In:Journal, 2025`),
   and an ISSN in brackets reads like a year. Parse `In:` out first, strip the ISSN.
+- Cochrane keeps the previous search in the session, so the result page can still show the last
+  query for a few seconds. Wait until the result links' `highlightAbstract` carries the new
+  terms before reading.
 - Cochrane ignores Enter in its search box and the URL parameters on `/search`: set the value
   with the native setter, then click `.searchByBtn`. Its default order puts off-topic reviews
   first for multi-word queries, hence the `relevance` score.

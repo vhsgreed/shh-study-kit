@@ -1,5 +1,53 @@
 [
  {
+  "name": "today",
+  "description": "START HERE for 'what do I need to do?'. Everything due in the next N days (default 14) from every system at once: Canvas deadlines not yet submitted, Ladok registration windows open now or opening soon, this week's timetable, and (library=true) library loans due back. Each section reports its own error, so one dead session never hides the rest.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "days": {
+     "type": "integer"
+    },
+    "library": {
+     "type": "boolean"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "doctor",
+  "description": "Health check of every session the toolkit depends on (Canvas token and its expiry date, agent browser, Ladok, database proxy, library, timetable link). Each row has the fix, which is always a human action. Run it when another tool fails. only='canvas,ladok' limits the checks.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "only": {
+     "type": "string"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "library",
+  "description": "The school library (Koha). With query: catalogue search with availability per copy. Without: the student's own loans with due dates and days left, holds and fines.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "query": {
+     "type": "string"
+    },
+    "limit": {
+     "type": "integer"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "ladok_windows",
   "description": "Ladok registration windows (kursregistrering + tentamensanmälan): what opens when, what closes within N days, with course period. Needs the agent Chrome logged in to Ladok (CDP :9233); read-only, never registers anything. Subrepo: ladok_vakt/.",
   "inputSchema": {
