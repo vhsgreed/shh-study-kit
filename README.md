@@ -36,7 +36,9 @@ Den är byggd för att köras av en cron en gång i dygnet och vara tyst.
 ## Vad den inte gör
 
 - Anmäler, avanmäler eller ändrar ingenting. Bara GET.
-- Loggar inte in åt dig. Du loggar in en gång i en Chrome-profil, skriptet använder den sessionen.
+- Loggar inte in åt dig om du inte uttryckligen slår på det. Grundläget: du loggar in
+  en gång i en Chrome-profil och skriptet använder den sessionen. Valfri omloggning
+  finns, avstängd som standard, se [Valfri inloggning](#valfri-inloggning-av-som-standard).
 - Skickar ingen daglig sammanfattning. Tystnad är ett feature, inte en bugg.
 
 ## Snabbstart
@@ -59,6 +61,32 @@ python3 -m ladok_vakt --all
 
 `python3 -m ladok_vakt` utan argument är cron-läget: det skriver bara när det
 finns något att säga.
+
+## Valfri inloggning (av som standard)
+
+Sessionen i Ladok tar slut, typiskt när webbläsaren startas om eller efter en tids
+inaktivitet. Med `LADOK_AUTOLOGIN=1` försöker skriptet logga in igen innan det larmar,
+med hjälp av det lösenord Chrome redan har sparat för ditt lärosätes inloggningssida.
+
+```bash
+export LADOK_IDP_ENTITY='https://swamid2.shh.se/idp/shibboleth'   # ditt lärosätes SWAMID-id
+export LADOK_AUTOLOGIN=1
+python3 -m ladok_vakt --login      # prova en gång, i förväg
+```
+
+Vad den gör: öppnar inloggningen via SWAMID, väntar tills Chrome har fyllt i
+formuläret själv, klickar Login med ett riktigt musklick, och kontrollerar att Ladok
+svarar innan den rapporterar lyckat.
+
+Vad den **inte** gör, och det här är värt att granska själv: den läser aldrig
+lösenordsfältets värde, sparar inget, skriver inget, skickar inget, och rör inte
+webbläsarens lösenordshanterar-API. Den frågar bara "är fälten ifyllda?" och klickar.
+Koden är `ladok_vakt/login.py`, och `tests/` har ett test som larmar om någon lägger in
+avläsning av fältvärden där.
+
+Förutsättningar: lösenordet är sparat i den Chrome-profil skriptet använder, och
+inloggningen kräver inget mer (2FA, engångskod eller godkännande i app). Gör den det
+misslyckas omloggningen och du får ett fellarm, vilket är meningen: den ska inte gissa.
 
 ## Integrera i ditt flöde
 
@@ -137,6 +165,8 @@ python3 -m ladok_vakt --test-mail    # bevisar att kanalerna svarar
 | `LADOK_MAIL_TO` | tom | mottagare, tom = ingen mejl |
 | `LADOK_MAIL_FROM` | `ladok-vakt <vakt@example.org>` | avsändare, måste vara verifierad i Resend |
 | `LADOK_CLOSE_DAYS` | `3` | larma när fönstret stänger inom så många dagar |
+| `LADOK_AUTOLOGIN` | `0` | `1` = försök logga in igen med sparat lösenord innan larm |
+| `LADOK_IDP_ENTITY` | tom | lärosätets SWAMID entityID, krävs för omloggning |
 | `LADOK_STALE_HOURS` | `36` | larma när ingen lyckad hämtning är äldre än så |
 | `LADOK_MAIL_MIN_HOURS` | `20` | max ett fellarm per kanal och dygn |
 | `LADOK_HEARTBEAT` | `1` | veckohälsokoll på måndagar, `0` stänger av |
@@ -187,10 +217,11 @@ Ingen data lämnar datorn utom larmet självt. Sessionskakan stannar i din
 Chrome-profil. Skriptet skickar bara kursnamn, datum och en varningstext till den
 kanal du valt. Ingen statistik, ingen telemetri, inget konto.
 
-**Inloggning:** skriptet rör aldrig lösenord. Det läser, sparar eller skickar
-inget, och det loggar inte in åt dig: sessionen kommer från en webbläsare du
-själv har loggat in i. Vill du automatisera själva inloggningen är det utanför
-det här repot, och då hanterar du dina egna uppgifter och din egen risk.
+**Inloggning:** lösenordet lämnar aldrig webbläsaren. Skriptet läser, sparar,
+skickar och loggar inget av det, och det har inget eget konto: det använder den
+inloggning du själv har sparat i din Chrome-profil. Omloggningen är avstängd som
+standard, och den klickar bara i ett formulär Chrome redan har fyllt i. Slår du på
+den ansvarar du själv för att det är förenligt med ditt lärosätes regler.
 
 ## Krav
 

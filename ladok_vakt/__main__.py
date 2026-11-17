@@ -4,6 +4,7 @@
     python3 -m ladok_vakt --all        # every window, always
     python3 -m ladok_vakt --json       # machine-readable
     python3 -m ladok_vakt --test-mail  # prove the notification path works
+    python3 -m ladok_vakt --login      # optional: re-login with the browser's saved password
 
 Exit codes: 0 ok (including "nothing to report"), 2 configuration problem.
 """
@@ -17,6 +18,15 @@ def main(argv):
     cfg = core.Config()
     want_alert = not ('--all' in argv or '--json' in argv)
     email = '--no-email' not in argv
+
+    if '--login' in argv:
+        from .login import login
+        try:
+            print('inloggning: %s' % login(cfg))
+            return 0
+        except core.Fault as exc:
+            print('inloggning misslyckades: %s' % exc)
+            return 2
 
     if '--test-mail' in argv:
         subject = 'ladok-vakt: test av notifieringen'

@@ -36,7 +36,9 @@ built to run from cron once a day and to be quiet.
 ## What it does not do
 
 - No registration, deregistration or change of anything. GET only.
-- No login automation. You log in once in a Chrome profile; the script uses that session.
+- No login unless you opt in. You log in once in a Chrome profile and the script uses
+  that session; optional re-login exists, off by default, see
+  [Optional login](#optional-login-off-by-default).
 - No daily digest. Silence is a feature.
 
 ## Quick start
@@ -58,6 +60,32 @@ python3 -m ladok_vakt --all
 
 `python3 -m ladok_vakt` with no arguments is cron mode: it writes only when there
 is something worth saying.
+
+## Optional login (off by default)
+
+The Ladok session ends: typically when the browser restarts, or after a while idle.
+With `LADOK_AUTOLOGIN=1` the script tries to sign in again before it raises a fault,
+using the password Chrome has already saved for your institution's login page.
+
+```bash
+export LADOK_IDP_ENTITY='https://swamid2.shh.se/idp/shibboleth'   # your SWAMID entityID
+export LADOK_AUTOLOGIN=1
+python3 -m ladok_vakt --login      # try it once, in advance
+```
+
+What it does: opens the SWAMID login, waits until Chrome has filled the form by
+itself, clicks Login with a real mouse event, and checks that Ladok answers before
+reporting success.
+
+What it does **not** do, and this is the part worth auditing yourself: it never reads
+the value of the password field, stores nothing, writes nothing, sends nothing, and
+does not touch the browser's password-manager API. It asks "are the fields filled?"
+and clicks. The code is `ladok_vakt/login.py`, and `tests/` contains a test that fails
+if anyone adds field-value reads there.
+
+Requirements: the password is saved in the Chrome profile the script uses, and the
+login needs nothing further (2FA, one-time code, app approval). If it does, the
+re-login fails and you get a fault alert, which is the point: it does not guess.
 
 ## Integrate it into your workflow
 
@@ -176,10 +204,11 @@ No data leaves the machine except the notice itself. The session cookie stays in
 Chrome profile. The script sends course names, dates and a warning line to the channel
 you chose. No analytics, no telemetry, no account.
 
-**Login:** the script never touches passwords. It does not read, store or send
-any, and it does not log in for you: the session comes from a browser you
-authenticated yourself. Automating the login itself is outside this repo, and
-then the credentials and the risk are your own.
+**Login:** the password never leaves the browser. The script does not read, store,
+send or log it, and it holds no account of its own: it uses the login you saved in
+your own Chrome profile. Re-login is off by default, and it only clicks a form Chrome
+has already filled. If you enable it, whether that is allowed where you study is your
+call and your responsibility.
 
 ## Requirements
 

@@ -60,6 +60,10 @@ class Config:
         self.smtp_host = e.get('LADOK_SMTP_HOST', 'smtp.gmail.com')
         self.smtp_port = int(e.get('LADOK_SMTP_PORT', '587'))
         self.monday_heartbeat = e.get('LADOK_HEARTBEAT', '1') not in ('0', 'false', 'no')
+        # Optional re-login through the browser's own saved password. Off by default;
+        # see ladok_vakt/login.py for exactly what it does and does not touch.
+        self.autologin = e.get('LADOK_AUTOLOGIN', '0').lower() not in ('0', 'false', 'no', '')
+        self.idp_entity = e.get('LADOK_IDP_ENTITY', '')
         # Any of these can carry the fault notice instead of (or as well as) mail.
         self.webhook_url = e.get('LADOK_WEBHOOK_URL', '')
         self.webhook_format = e.get('LADOK_WEBHOOK_FORMAT', 'slack')  # slack|discord|ntfy|generic
@@ -501,7 +505,15 @@ def run(cfg, alert=True, email=True, write_files=True):
     """Do one check. Returns the lines that should be sent to the human."""
     prev = load_state(cfg)
     try:
-        uid, reg_xml, exam_xml = fetch(cfg)
+        try:
+            uid, reg_xml, exam_xml = fetch(cfg)
+        except Fault:
+            if not cfg.autologin:
+                raise
+            from .login import login        # late import: the module is optional
+            log(cfg, 'session gone, trying the saved login')
+            login(cfg)
+            uid, reg_xml, exam_xml = fetch(cfg)
         rows = pending_actions(parse_registrations(reg_xml) + parse_exams(exam_xml))
     except Fault as exc:
         note = '- VARNING: ladok-vakt kunde inte läsa Ladok: %s' % exc
