@@ -315,11 +315,12 @@ ACCOUNT_JS = r"""(function(){
   }
   var body = document.body.innerText;
   return JSON.stringify({
-    logged_in: !!document.querySelector('#checkouts_table, #user_summary, #opac-user-views, .loggedinusername'),
-    user: (document.querySelector('#user_summary, .loggedinusername, .user-info') || {}).innerText || '',
-    checkouts: table('#checkouts_table'),
-    holds: table('#holdst') || table('#reservest'),
-    fines: table('#fines_table') || table('#finest'),
+    logged_in: !!document.querySelector('#checkoutst, #checkouts_table, #user_summary, #opac-user-views, .loggedinusername'),
+    user: ((document.querySelector('.loggedinusername, #user_summary, .user-info') || {}).innerText || '')
+        .replace(/\s+/g, ' ').trim().slice(0, 120),
+    checkouts: table('#checkoutst') || table('#checkouts_table'),
+    holds: table('#holdst') || table('#reservest') || table('#holdst_table'),
+    fines: table('#finest') || table('#fines_table') || table('#chargest'),
     overdues: table('#overdues_table'),
     message: ((document.querySelector('.alert, .dialog.alert, #login_error') || {}).innerText || '').trim().slice(0, 300),
     login_form: !!document.querySelector('#modalAuth input[name=login_userid]'),
@@ -338,6 +339,20 @@ def _secret(name):
     return value or None
 
 
+def _days_left(date_str):
+    m = _DATE.search(date_str or '')
+    if not m:
+        return None
+    raw = m.group(1)
+    for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y'):
+        try:
+            d = __import__('datetime').datetime.strptime(raw, fmt).date()
+            return (d - __import__('datetime').date.today()).days
+        except ValueError:
+            continue
+    return None
+
+
 def _normalise_account(raw):
     """Rows come back as table cells; name the columns people actually ask for."""
     def rows_of(key):
@@ -346,13 +361,18 @@ def _normalise_account(raw):
     checkouts = []
     for cells in rows_of('checkouts'):
         joined = ' | '.join(cells)
-        if re.fullmatch(r'(?i)(titel|title|due|förfaller|\W)+', joined):
+        if re.fullmatch(r'(?i)(titel|title|author|due|förfaller|checked out|\W)+', joined):
             continue                                   # header row
+        if cells and cells[0].strip().lower() in ('title', 'titel'):
+            continue
         dates = _DATE.findall(joined)
+        due = cells[3] if len(cells) > 3 and _DATE.search(cells[3] or '') else (dates[-1] if dates else '')
         checkouts.append({
             'cells': cells,
-            'title': cells[1] if len(cells) > 1 else (cells[0] if cells else ''),
-            'due': dates[-1] if dates else '',
+            'title': cells[0] if cells else '',
+            'author': cells[1] if len(cells) > 1 else '',
+            'due': due,
+            'days_left': _days_left(due),
         })
     holds = []
     for cells in rows_of('holds'):
@@ -422,7 +442,7 @@ def login_sso(timeout=60):
     ensure_browser()
     with _Page() as p:
         p.goto(USER, marker="!!document.querySelector('#checkouts_table, a[href*=Shibboleth]')")
-        if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+        if p.eval("!!document.querySelector('#checkoutst, #checkouts_table, #user_summary')"):
             return 'already in'
         p.loop.run_until_complete(p.call('Page.navigate', {'url': SHIB_LOGIN}))
         clicked = False
@@ -441,7 +461,7 @@ def login_sso(timeout=60):
                 clicked = _click(p, 'button[name=_eventId_proceed], input[name=_eventId_proceed]')
             if clicked and st.get('host') == 'biblioteket.shh.se':
                 time.sleep(1.5)
-                if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+                if p.eval("!!document.querySelector('#checkoutst, #checkouts_table, #user_summary')"):
                     return 'ok'
         raise KohaError('SSO login did not finish in %ds (autofill empty, 2FA, or slow IdP)' % timeout)
 
@@ -480,7 +500,7 @@ def _advance_entra(p, timeout=90):
         except Exception:
             continue
         if st.get('host') == 'biblioteket.shh.se':
-            if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+            if p.eval("!!document.querySelector('#checkoutst, #checkouts_table, #user_summary')"):
                 return 'ok'
             return 'back'
         if st.get('error'):
@@ -520,7 +540,7 @@ def _form_login(p, user, password):
         return 'no form (%s)' % state
     for _ in range(14):
         time.sleep(1.5)
-        if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+        if p.eval("!!document.querySelector('#checkoutst, #checkouts_table, #user_summary')"):
             return 'ok'
         msg = p.eval("((document.querySelector('.alert, .dialog, #login_error, .form-error')||{}).innerText||'').replace(/\\s+/g,' ').slice(0,160)")
         if msg:
@@ -580,7 +600,7 @@ def wait_for_login(timeout=300):
     with _Page() as p:
         while time.time() < deadline:
             p.goto(USER, marker="!!document.querySelector('#checkouts_table, a[href*=Shibboleth], #modalAuth')")
-            if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+            if p.eval("!!document.querySelector('#checkoutst, #checkouts_table, #user_summary')"):
                 return 'signed in'
             time.sleep(5)
     raise KohaError('no signed-in library session after %ds' % timeout)
