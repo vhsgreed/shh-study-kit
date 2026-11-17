@@ -11,7 +11,7 @@ säger till en gång, på rätt dag, och håller tyst resten av tiden.
 - Människan i hälsa och sjukdom del 1 (2SHS11): anmälan 2027-01-18 till 2027-01-25 [om 63 d], kursstart 2027-01-25
 ```
 
-Engelska: [README.en.md](README.en.md) · How to get email notifications from Ladok.
+Engelska: [README.en.md](README.en.md).
 
 ---
 
@@ -161,11 +161,9 @@ Svaren är XML i Ladoks schema. Fälten som används är `sd:Registreringsperiod
 
 ## Var används Ladok
 
-Ladok är **Sveriges** nationella studiedokumentationssystem och används av i stort
-sett alla svenska lärosäten, från Uppsala till yrkeshögskolor med Ladok-koppling.
-Det används inte i Norge (FS og Søknadsweb), Danmark (STADS) eller Finland
-(Peppi/Sisu), så verktyget är svenskt. Lärosätes-id:t skiljer mellan skolor: byt
-`LADOK_LAROSATE` och samma skript fungerar på din skola.
+Ladok används av svenska lärosäten, med ett eget id per skola: byt
+`LADOK_LAROSATE` och samma skript fungerar på din skola. Norge, Danmark och
+Finland använder andra system, så verktyget är svenskt.
 
 ## Felsökning
 
@@ -188,6 +186,11 @@ Det används inte i Norge (FS og Søknadsweb), Danmark (STADS) eller Finland
 Ingen data lämnar datorn utom larmet självt. Sessionskakan stannar i din
 Chrome-profil. Skriptet skickar bara kursnamn, datum och en varningstext till den
 kanal du valt. Ingen statistik, ingen telemetri, inget konto.
+
+**Inloggning:** skriptet rör aldrig lösenord. Det läser, sparar eller skickar
+inget, och det loggar inte in åt dig: sessionen kommer från en webbläsare du
+själv har loggat in i. Vill du automatisera själva inloggningen är det utanför
+det här repot, och då hanterar du dina egna uppgifter och din egen risk.
 
 ## Krav
 

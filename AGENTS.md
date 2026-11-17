@@ -13,8 +13,11 @@ channel they chose. It never registers, unregisters or edits anything.
 
 1. **Read only toward Ladok.** Only GETs on `student.ladok.se/student/proxy/...`.
    An anmälan is the human's action, always.
-2. **Never log in for the human.** There is no login automation and none should be
-   added. The session comes from a browser the human authenticated by hand.
+2. **Never log in for the human.** There is no login automation here and none
+   should be added: the session comes from a browser the human authenticated by
+   hand. Do not add a credential store, a password prompt or an autofill driver.
+   If a human automates their own login outside this repo, that is their
+   credential handling and their responsibility, not this project's.
 3. **Never commit** session cookies, `~/.secrets` contents, student ids or course
    data. `LADOK_*` env vars are configuration, not source.
 4. **Silence means success.** Cron mode prints nothing on a good day. Do not "fix"

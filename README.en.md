@@ -151,10 +151,9 @@ Answers are XML in Ladok's schema; the fields used are `sd:Registreringsperiod`
 
 ## Where Ladok is used
 
-Ladok is **Sweden's** national study documentation system, used by essentially every
-Swedish university and college. It is not used in Norway (FS og Søknadsweb), Denmark
-(STADS) or Finland (Peppi/Sisu), so this tool is Sweden specific. Each university has
-its own id: set `LADOK_LAROSATE` and the same script works at your school.
+Ladok is used by Swedish universities and colleges, with one id per institution:
+set `LADOK_LAROSATE` and the same script works at your school. Norway, Denmark
+and Finland use other systems, so this tool is Sweden specific.
 
 ## Troubleshooting
 
@@ -176,6 +175,11 @@ its own id: set `LADOK_LAROSATE` and the same script works at your school.
 No data leaves the machine except the notice itself. The session cookie stays in your
 Chrome profile. The script sends course names, dates and a warning line to the channel
 you chose. No analytics, no telemetry, no account.
+
+**Login:** the script never touches passwords. It does not read, store or send
+any, and it does not log in for you: the session comes from a browser you
+authenticated yourself. Automating the login itself is outside this repo, and
+then the credentials and the risk are your own.
 
 ## Requirements
 
