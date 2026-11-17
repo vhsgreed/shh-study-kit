@@ -36,3 +36,13 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
    SameSite=Lax, so it is dropped once the 2-minute grace expires (two-factor takes longer).
    Launch that profile with `--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure`
    (see the school-helper profile's `scripts/koha_chrome.sh`) and the login sticks.
+
+8. **Database access is one session, not one login per database.** CINAHL, PsycInfo, Cochrane,
+   Web of Science, JCR, Sage and NE all sit behind `shh.idm.oclc.org`, which delegates to the
+   school's Microsoft Entra tenant. A single sign-in with "stay signed in" leaves an Entra
+   cookie in the agent browser and EZproxy then admits every one of them silently, so never
+   ask for credentials per database. Search the ones with a structured reader
+   (`db_search`: cinahl, psycinfo); the rest open with `db_open`. Two traps cost us time:
+   EBSCO's URL parameter reads a space-separated query as one phrase (hence `_normalise_query`
+   joins bare words with AND), and a record's source line can sit on the authors' line, so
+   parse `In:` out of the `By:` line before splitting authors.

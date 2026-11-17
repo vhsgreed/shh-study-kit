@@ -317,6 +317,59 @@ def koha_status():
 
 # ---------------------------------------------------------- Open research APIs
 
+@tool("db_list",
+      "List the subscription databases Sophiahemmet gives access to (CINAHL, PsycInfo, "
+      "Cochrane, Web of Science, JCR, Sage Research Methods, NE, PubMed) and whether each "
+      "one can be searched from here.",
+      {})
+def db_list():
+    from . import databases
+    return {"databases": databases.catalogue()}
+
+
+@tool("db_status",
+      "Check whether the school sign-in still works for a database (default cinahl). "
+      "authenticated=false means the Entra session expired and someone has to sign in once "
+      "in the school browser.",
+      {"database": S})
+def db_status(database="cinahl"):
+    from . import databases
+    return databases.status(database or "cinahl")
+
+
+@tool("db_search",
+      "Search a subscription database (cinahl, psycinfo) and return citations: title, "
+      "authors, journal, year, volume, issue, pages, subjects, peer-reviewed, full-text, "
+      "record URL. A bare multi-word query is joined with AND; quotes keep a phrase.",
+      {"database": S, "query": S, "limit": I})
+def db_search(database, query, limit=10):
+    from . import databases
+    if not query:
+        raise ValueError("query is required")
+    return databases.search(database or "cinahl", query, limit=limit or 10)
+
+
+@tool("db_detail",
+      "Open one database record and return its abstract, DOI, authors and source line. "
+      "Pass the record URL from db_search.",
+      {"url": S})
+def db_detail(url):
+    from . import databases
+    if not url:
+        raise ValueError("url is required")
+    return databases.detail(url)
+
+
+@tool("db_open",
+      "Open one database in the school browser and report where it landed. For the "
+      "databases that have no structured search here (Cochrane, Web of Science, JCR, Sage, "
+      "NE) and for signing in when the session has expired.",
+      {"database": S})
+def db_open(database):
+    from . import databases
+    return databases.open_database(database)
+
+
 @tool("pubmed", "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
       {"query": S, "max": I}, ["query"])
 def pubmed(query, max=10):

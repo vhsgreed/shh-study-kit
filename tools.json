@@ -360,6 +360,78 @@
   }
  },
  {
+  "name": "db_list",
+  "description": "List the subscription databases Sophiahemmet gives access to (CINAHL, PsycInfo, Cochrane, Web of Science, JCR, Sage Research Methods, NE, PubMed) and whether each one can be searched from here.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "db_status",
+  "description": "Check whether the school sign-in still works for a database (default cinahl). authenticated=false means the Entra session expired and someone has to sign in once in the school browser.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "database": {
+     "type": "string"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "db_search",
+  "description": "Search a subscription database (cinahl, psycinfo) and return citations: title, authors, journal, year, volume, issue, pages, subjects, peer-reviewed, full-text, record URL. A bare multi-word query is joined with AND; quotes keep a phrase.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "database": {
+     "type": "string"
+    },
+    "query": {
+     "type": "string"
+    },
+    "limit": {
+     "type": "integer"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "db_detail",
+  "description": "Open one database record and return its abstract, DOI, authors and source line. Pass the record URL from db_search.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "url": {
+     "type": "string"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "db_open",
+  "description": "Open one database in the school browser and report where it landed. For the databases that have no structured search here (Cochrane, Web of Science, JCR, Sage, NE) and for signing in when the session has expired.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "database": {
+     "type": "string"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "pubmed",
   "description": "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
   "inputSchema": {

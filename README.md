@@ -21,6 +21,12 @@ Then ask your agent "what is due this week?" and let it work.
   `--proxy-server=http://127.0.0.1:8118`, where [`scripts/apify_chain_proxy.py`](scripts/apify_chain_proxy.py)
   chains to a residential proxy (password from `~/.secrets/APIFY_PROXY_PASSWORD`). Loans need
   `~/.secrets/KOHA_USER` and `~/.secrets/KOHA_PIN`.
+- **Databases (CINAHL, PsycInfo):** `db_search`, `db_detail`, `db_status`, `db_open`, `db_list`
+  go through the school's OCLC EZproxy (`shh.idm.oclc.org`), which hands the visitor to the
+  Microsoft Entra tenant. One sign-in with "stay signed in" in the agent browser is enough
+  for weeks of searches afterwards; `db_status` says whether that session still holds, and
+  every function raises instead of returning an empty result set when it does not. Searches
+  return citation fields (authors, journal, year, volume, issue, pages, DOI, abstract).
 - **Schemas:** [`tools.json`](tools.json) (MCP `inputSchema` format, regenerate with
   `python -m unitoolkit manifest > tools.json`).
 - **CLI fallback:** `python -m unitoolkit <tool> key=value ...`, JSON on stdout, errors on stderr.
@@ -36,6 +42,7 @@ Then ask your agent "what is due this week?" and let it work.
 | `ladok_windows` | Ladok studentwebb (subrepo [`vendor/ladok-vakt`](vendor/ladok-vakt)) | logged-in agent browser |
 | `timeedit` | TimeEdit | none |
 | `pubmed`, `libris` | NCBI E-utilities, Libris | none |
+| `db_search`, `db_detail`, `db_list`, `db_status`, `db_open` | EBSCOhost (CINAHL, PsycInfo) via EZproxy | school Entra session |
 
 All tested live against SHH on 2026-11-15: 3 Canvas courses mirrored, 21 of 21 programme
 courses mapped with kursplan and litteraturlista, MCP handshake and tool calls verified.
