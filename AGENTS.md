@@ -31,3 +31,8 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
    usernames: repeated failures risk a lockout. Preferred path: `koha_open_login`, a human signs
    in once in the proxied window, `koha_wait_login`, then `koha_loans` reads the session.
    The form must carry `login_op=cud-login` or Koha ignores the POST entirely.
+   The SSO route fails at the last step for a cookie reason, not a proxy one: the SAML
+   hand-back from login.microsoftonline.com is a cross-site POST, and Koha's CGISESSID is
+   SameSite=Lax, so it is dropped once the 2-minute grace expires (two-factor takes longer).
+   Launch that profile with `--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure`
+   (see the school-helper profile's `scripts/koha_chrome.sh`) and the login sticks.

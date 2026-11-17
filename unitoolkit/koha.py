@@ -496,6 +496,30 @@ def _advance_entra(p, timeout=90):
     return 'timeout'
 
 
+def _relax_samesite(p):
+    """Rewrite the library's Lax cookies to SameSite=None before a SAML login.
+
+    The Shibboleth hand-back from login.microsoftonline.com is a cross-site POST, and a
+    SameSite=Lax cookie is not sent on those (Chrome only allows it in a 2-minute grace
+    window, which two-factor authentication usually outlasts). The result is a login that
+    succeeds at Microsoft and lands in Koha signed out. The SP's own state cookies are
+    already None; CGISESSID is the one that needs relaxing.
+    """
+    ck = p.loop.run_until_complete(p.call('Storage.getCookies', {})) or {}
+    changed = 0
+    for c in ck.get('cookies', []):
+        if 'biblioteket.shh.se' not in c.get('domain', ''):
+            continue
+        if (c.get('sameSite') or 'Lax') == 'None':
+            continue
+        p.loop.run_until_complete(p.call('Storage.setCookies', {'cookies': [{
+            'name': c['name'], 'value': c['value'], 'domain': c['domain'], 'path': c['path'],
+            'secure': True, 'httpOnly': c.get('httpOnly', False), 'sameSite': 'None',
+            'expires': c.get('expires', -1)}]}))
+        changed += 1
+    return changed
+
+
 def open_login():
     """Bring the proxied Chrome to the library account page and leave it there.
 
@@ -504,9 +528,11 @@ def open_login():
     """
     ensure_browser()
     with _Page() as p:
+        p.loop.run_until_complete(p.call('Network.enable'))
         p.goto(USER, marker="!!document.querySelector('#modalAuth, a[href*=Shibboleth], #checkouts_table')")
+        relaxed = _relax_samesite(p)
         state = p.eval("!!document.querySelector('#checkouts_table, #user_summary')")
-        return {'url': USER, 'signed_in': bool(state),
+        return {'url': USER, 'signed_in': bool(state), 'cookies_relaxed': relaxed,
                 'next': None if state else 'sign in in the open window, then run koha_wait_login'}
 
 
@@ -539,6 +565,7 @@ def loans(user=None, pin=None, timeout=60):
         p.goto(USER, marker="!!document.querySelector('#modalAuth, #checkouts_table, a[href*=Shibboleth]')")
         raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
         if not raw.get('logged_in'):
+            _relax_samesite(p)
             p.loop.run_until_complete(p.call('Page.navigate', {'url': SHIB_LOGIN}))
             clicked = False
             deadline = time.time() + timeout
