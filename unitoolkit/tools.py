@@ -287,6 +287,16 @@ def koha_loans():
     return koha.loans()
 
 
+@tool("koha_open_login",
+      "Open the library account page in the proxied Chrome window and report whether the "
+      "session is signed in. For the one-time manual sign-in; after that koha_loans reads "
+      "the account from the session cookie.",
+      {})
+def koha_open_login():
+    from . import koha
+    return koha.open_login()
+
+
 @tool("koha_wait_login",
       "Wait until the library account page shows a signed-in session, for the one-time manual "
       "sign-in in the proxied Chrome window. After that koha_loans needs no credentials.",

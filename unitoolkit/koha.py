@@ -496,6 +496,20 @@ def _advance_entra(p, timeout=90):
     return 'timeout'
 
 
+def open_login():
+    """Bring the proxied Chrome to the library account page and leave it there.
+
+    The one-time case: a human signs in ("Log in using your SHH account" or the library
+    form), Chrome keeps the session cookie, and afterwards loans() needs no credentials.
+    """
+    ensure_browser()
+    with _Page() as p:
+        p.goto(USER, marker="!!document.querySelector('#modalAuth, a[href*=Shibboleth], #checkouts_table')")
+        state = p.eval("!!document.querySelector('#checkouts_table, #user_summary')")
+        return {'url': USER, 'signed_in': bool(state),
+                'next': None if state else 'sign in in the open window, then run koha_wait_login'}
+
+
 def wait_for_login(timeout=300):
     """Wait until the library account page shows a signed-in session.
 

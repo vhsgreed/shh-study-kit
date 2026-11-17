@@ -326,6 +326,16 @@
   }
  },
  {
+  "name": "koha_open_login",
+  "description": "Open the library account page in the proxied Chrome window and report whether the session is signed in. For the one-time manual sign-in; after that koha_loans reads the account from the session cookie.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "koha_wait_login",
   "description": "Wait until the library account page shows a signed-in session, for the one-time manual sign-in in the proxied Chrome window. After that koha_loans needs no credentials.",
   "inputSchema": {
