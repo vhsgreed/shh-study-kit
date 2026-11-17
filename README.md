@@ -15,6 +15,12 @@ Then ask your agent "what is due this week?" and let it work.
 ## For agents
 - **Start with [`skill/SKILL.md`](skill/SKILL.md).** It is written for you: tool table,
   rules, and the pitfalls that cost us an afternoon.
+- **Library (Koha):** `koha_search`, `koha_item`, `koha_loans`, `koha_status` read
+  biblioteket.shh.se through a proxied Chrome, because that site's Cloudflare answers plain
+  HTTP clients with 429 and the catalogue is rendered by JavaScript. Transport: Chrome with
+  `--proxy-server=http://127.0.0.1:8118`, where [`scripts/apify_chain_proxy.py`](scripts/apify_chain_proxy.py)
+  chains to a residential proxy (password from `~/.secrets/APIFY_PROXY_PASSWORD`). Loans need
+  `~/.secrets/KOHA_USER` and `~/.secrets/KOHA_PIN`.
 - **Schemas:** [`tools.json`](tools.json) (MCP `inputSchema` format, regenerate with
   `python -m unitoolkit manifest > tools.json`).
 - **CLI fallback:** `python -m unitoolkit <tool> key=value ...`, JSON on stdout, errors on stderr.

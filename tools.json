@@ -281,6 +281,61 @@
   }
  },
  {
+  "name": "koha_search",
+  "description": "Search the SHH library catalogue (Koha, biblioteket.shh.se) for course books and literature: title, biblionumber and availability per hit. Read-only. Goes through the proxied agent browser because the library's Cloudflare refuses plain HTTP clients.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "q": {
+     "type": "string"
+    },
+    "limit": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "q"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "koha_item",
+  "description": "One catalogue record by biblionumber: item table (placering, status, item type) and the record summary (publisher, edition, language). Read-only.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "biblionumber": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "biblionumber"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "koha_loans",
+  "description": "Your own Koha account: loans with due dates and reservations with queue position. Needs ~/.secrets/KOHA_USER and ~/.secrets/KOHA_PIN (you create them; never printed). Read-only: no renewal, no reservation changes.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "koha_status",
+  "description": "Diagnostics for the Koha path: whether the proxied browser and the local chain proxy are up, and whether library credentials are on file.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {},
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "pubmed",
   "description": "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
   "inputSchema": {

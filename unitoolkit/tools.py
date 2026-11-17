@@ -255,6 +255,47 @@ def timeedit(url):
             for x in d.get("reservations", [])]
 
 
+# -------------------------------------------------------------------- Koha
+
+@tool("koha_search",
+      "Search the SHH library catalogue (Koha, biblioteket.shh.se) for course books and "
+      "literature: title, biblionumber and availability per hit. Read-only. Goes through the "
+      "proxied agent browser because the library's Cloudflare refuses plain HTTP clients.",
+      {"q": S, "limit": I}, ("q",))
+def koha_search(q, limit=10):
+    from . import koha
+    rows = koha.search(q, limit=limit or 10)
+    return {"query": q, "hits": len(rows), "results": rows}
+
+
+@tool("koha_item",
+      "One catalogue record by biblionumber: item table (placering, status, item type) and the "
+      "record summary (publisher, edition, language). Read-only.",
+      {"biblionumber": S}, ("biblionumber",))
+def koha_item(biblionumber):
+    from . import koha
+    return koha.availability(biblionumber)
+
+
+@tool("koha_loans",
+      "Your own Koha account: loans with due dates and reservations with queue position. Needs "
+      "~/.secrets/KOHA_USER and ~/.secrets/KOHA_PIN (you create them; never printed). Read-only: "
+      "no renewal, no reservation changes.",
+      {})
+def koha_loans():
+    from . import koha
+    return koha.loans()
+
+
+@tool("koha_status",
+      "Diagnostics for the Koha path: whether the proxied browser and the local chain proxy are "
+      "up, and whether library credentials are on file.",
+      {})
+def koha_status():
+    from . import koha
+    return koha.status()
+
+
 # ---------------------------------------------------------- Open research APIs
 
 @tool("pubmed", "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
