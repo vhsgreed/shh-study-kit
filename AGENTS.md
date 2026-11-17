@@ -46,3 +46,14 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
    EBSCO's URL parameter reads a space-separated query as one phrase (hence `_normalise_query`
    joins bare words with AND), and a record's source line can sit on the authors' line, so
    parse `In:` out of the `By:` line before splitting authors.
+
+9. **Full text is licensed, so it is rate-limited by design.** `db_fulltext` keeps a one-hour
+   ledger and refuses past 20 downloads. Do not raise the cap or loop around it: publishers
+   detect systematic downloading and block the institution's whole EZproxy, which would take
+   the databases away from every student at the school. Resolve the DOI outside the proxy
+   when the proxied DOI redirect fails (Cochrane lands on a Chrome error page through
+   EZproxy, while its own URL proxies fine).
+10. **Session freshness:** the EZproxy cookies die with the browser, but the Microsoft Entra
+    `ESTSAUTHPERSISTENT` cookie lasts 90 days and is renewed on use, and EZproxy re-admits
+    silently from it. A daily keepalive (`db_status`) is therefore enough; only a renewed MFA
+    demand needs a human.

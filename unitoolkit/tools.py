@@ -370,6 +370,20 @@ def db_open(database):
     return databases.open_database(database)
 
 
+@tool("db_fulltext",
+      "Full text of one article, by DOI, through the school's subscription (EZproxy). Saves "
+      "the PDF under ~/.local/share/unitoolkit/fulltext and returns path, pages and the "
+      "extracted text. Says why when there is no route (publisher outside the proxy: order "
+      "it via fjärrlån; or an open-access copy exists). Capped at 20 downloads an hour: the "
+      "licences allow reading for study, not bulk downloading.",
+      {"doi": S, "text": B})
+def db_fulltext(doi, text=True):
+    from . import fulltext
+    if not doi:
+        raise ValueError("doi is required")
+    return fulltext.fetch(doi, text=True if text is None else bool(text))
+
+
 @tool("pubmed", "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
       {"query": S, "max": I}, ["query"])
 def pubmed(query, max=10):

@@ -33,11 +33,13 @@ DATABASES = {
                'url': EBSCO + '/c/%s/search/results?db=cin20&q=' % EBSCO_COLLECTION},
     'psycinfo': {'name': 'PsycInfo', 'ebsco': 'psyh',
                  'url': EBSCO + '/c/%s/search/results?db=psyh&q=' % EBSCO_COLLECTION},
-    'cochrane': {'name': 'Cochrane Library', 'url': 'https://www.cochranelibrary.com/search?q='},
+    'cochrane': {'name': 'Cochrane Library', 'url': 'https://www.cochranelibrary.com/advanced-search'},
     'wos': {'name': 'Web of Science', 'url': 'https://webofknowledge.com/wos'},
     'jcr': {'name': 'Journal Citation Reports', 'url': 'https://jcr.clarivate.com/jcr/home'},
-    'sage': {'name': 'Sage Research Methods', 'url': 'http://methods.sagepub.com/'},
-    'nese': {'name': 'Nationalencyklopedin', 'url': 'http://www.ne.se/'},
+    'sage': {'name': 'Sage Research Methods', 'url': 'https://methods.sagepub.com/'},
+    'nese': {'name': 'Nationalencyklopedin', 'url': 'https://www.ne.se/'},
+    'ffhb': {'name': 'Författningshandbok (Liber)',
+             'url': 'https://online.liber.se/Home/LinkAccess/?acid=qQdnnEJcDpnaiECJYMw0BQ%3d%3d&'},
     'pubmed': {'name': 'PubMed (EZproxy, for full-text links)',
                'url': 'http://www.ncbi.nlm.nih.gov/pubmed/?otool=isesushlib'},
 }
@@ -107,6 +109,10 @@ class _Tab:
 
     def __exit__(self, *exc):
         try:
+            try:
+                self.loop.run_until_complete(self.call('Target.closeTarget', {'targetId': self.target}))
+            except Exception:
+                pass
             self.loop.run_until_complete(self.ws.close())
         finally:
             self.loop.close()
@@ -124,9 +130,9 @@ class _Tab:
                 'the school browser is not running on %s; start it with agent_chrome.sh' % CDP)
         self.ws = await websockets.connect(ver['webSocketDebuggerUrl'], max_size=None)
         self.n = 0
-        target = (await self.call('Target.createTarget', {'url': self.url or 'about:blank'}))['targetId']
+        self.target = (await self.call('Target.createTarget', {'url': self.url or 'about:blank'}))['targetId']
         self.sid = (await self.call('Target.attachToTarget',
-                                    {'targetId': target, 'flatten': True}))['sessionId']
+                                    {'targetId': self.target, 'flatten': True}))['sessionId']
         await self.call('Runtime.enable', {}, self.sid)
 
     async def call(self, method, params=None, sid=None):

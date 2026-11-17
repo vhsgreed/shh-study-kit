@@ -27,6 +27,12 @@ Then ask your agent "what is due this week?" and let it work.
   for weeks of searches afterwards; `db_status` says whether that session still holds, and
   every function raises instead of returning an empty result set when it does not. Searches
   return citation fields (authors, journal, year, volume, issue, pages, DOI, abstract).
+- **Full text:** `db_fulltext doi=...` fetches the PDF of a subscribed article through the same
+  proxy (tested on paywalled Wiley and Elsevier articles, and a 188-page Cochrane review). It
+  captures the PDF at the network layer, because publishers answer a script fetch with a viewer
+  or a bot check. Publishers outside the school's EZproxy (De Gruyter, for one) get a plain
+  "no subscription route, order via fjärrlån". Capped at 20 downloads an hour: the licences
+  allow reading for study, and bulk downloading gets the whole school's proxy blocked.
 - **Schemas:** [`tools.json`](tools.json) (MCP `inputSchema` format, regenerate with
   `python -m unitoolkit manifest > tools.json`).
 - **CLI fallback:** `python -m unitoolkit <tool> key=value ...`, JSON on stdout, errors on stderr.
@@ -43,6 +49,7 @@ Then ask your agent "what is due this week?" and let it work.
 | `timeedit` | TimeEdit | none |
 | `pubmed`, `libris` | NCBI E-utilities, Libris | none |
 | `db_search`, `db_detail`, `db_list`, `db_status`, `db_open` | EBSCOhost (CINAHL, PsycInfo) via EZproxy | school Entra session |
+| `db_fulltext` | publisher sites via EZproxy (Wiley, Elsevier, Cochrane, ...) | school Entra session |
 
 All tested live against SHH on 2026-11-15: 3 Canvas courses mirrored, 21 of 21 programme
 courses mapped with kursplan and litteraturlista, MCP handshake and tool calls verified.
