@@ -496,6 +496,38 @@ def _advance_entra(p, timeout=90):
     return 'timeout'
 
 
+def _form_login(p, user, password):
+    """Library form login, from a clean session.
+
+    Koha binds a session to the client IP and rejects the POST at the second request if the
+    address changed ("You are logging from a different IP address"), which is what a rotating
+    proxy does. Start from a fresh session on the sticky exit, and load the page with cache
+    bypassed so the CSRF token belongs to that session.
+    """
+    p.loop.run_until_complete(p.call('Network.enable'))
+    p.loop.run_until_complete(p.call('Storage.clearCookies', {}))
+    p.goto(USER + '?n=%d' % int(time.time()),
+           marker="!!document.querySelector('#modalAuth, a[href*=opac-user]')")
+    p.loop.run_until_complete(p.call('Page.reload', {'ignoreCache': True}))
+    time.sleep(4)
+    if not p.eval("!!document.querySelector('#modalAuth input[name=login_userid]')"):
+        _click(p, 'a[href*="opac-user"]')
+        time.sleep(2)
+    state = p.eval(LOGIN_JS % (json.dumps(user), json.dumps(password)))
+    # A successful submit navigates immediately, which destroys the JS context and makes the
+    # evaluate return None. That is success, not a missing form.
+    if state not in ('submitted', None):
+        return 'no form (%s)' % state
+    for _ in range(14):
+        time.sleep(1.5)
+        if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+            return 'ok'
+        msg = p.eval("((document.querySelector('.alert, .dialog, #login_error, .form-error')||{}).innerText||'').replace(/\\s+/g,' ').slice(0,160)")
+        if msg:
+            return msg
+    return 'no answer'
+
+
 def _relax_samesite(p):
     """Rewrite the library's Lax cookies to SameSite=None before a SAML login.
 
@@ -593,24 +625,10 @@ def loans(user=None, pin=None, timeout=60):
                 p.goto(USER, marker="!!document.querySelector('#modalAuth, #checkouts_table')")
                 if not user or not pin:
                     _no_credentials()
-                state = p.eval(LOGIN_JS % (json.dumps(user), json.dumps(pin)))
-                if state != 'submitted':
-                    raise KohaError('could not find the library login form (%s)' % state)
-                for _ in range(12):
-                    time.sleep(1)
-                    raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
-                    if raw.get('logged_in'):
-                        break
-                    # A rejected login re-renders the form; stop as soon as Koha says why
-                    # instead of waiting out the timeout with a vague message.
-                    if raw.get('message') and raw.get('login_form') and p.eval(
-                            "!document.querySelector('.modal.show, #modalAuth.show')"):
-                        break
+                result = _form_login(p, user, pin)
+                raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
                 if not raw.get('logged_in'):
-                    why = (raw.get('message') or '').strip()
-                    raise KohaError('login refused%s' % (': ' + why[:160] if why
-                                    else ' (the form came back without an error text, '
-                                         'so the userid or pin is likely wrong)'))
+                    raise KohaError('library form login failed: %s' % result)
         out = _normalise_account(raw)
         out['user'] = (raw.get('user') or '').strip()[:200]
         return out

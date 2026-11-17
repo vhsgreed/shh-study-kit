@@ -15,7 +15,9 @@ import threading
 LISTEN = ('127.0.0.1', int(os.environ.get('CHAIN_PORT', '8118')))
 UP_HOST = os.environ.get('CHAIN_UPSTREAM_HOST', 'proxy.apify.com')
 UP_PORT = int(os.environ.get('CHAIN_UPSTREAM_PORT', '8000'))
-UP_USER = os.environ.get('CHAIN_UPSTREAM_USER', 'groups-RESIDENTIAL')
+# Sticky session: Koha binds the login to the client IP, so every request in the flow
+# must leave through the same residential exit. Apify keeps a session ~30 minutes.
+UP_USER = os.environ.get('CHAIN_UPSTREAM_USER', 'groups-RESIDENTIAL,session-kohavakt')
 PW = open(os.path.expanduser('~/.secrets/APIFY_PROXY_PASSWORD')).read().strip()
 AUTH = 'Basic ' + base64.b64encode(f'{UP_USER}:{PW}'.encode()).decode()
 
