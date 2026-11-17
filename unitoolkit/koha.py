@@ -462,6 +462,11 @@ ENTRA_JS = r"""JSON.stringify({
 })"""
 
 
+def _no_credentials():
+    raise KohaError('no credentials: put your library username and 4-digit pinkod on two lines '
+                    'in ~/.secrets/KOHA_CREDENTIALS (chmod 600). Read from disk, never printed.')
+
+
 def _advance_entra(p, timeout=90):
     """Walk the Entra wizard, clicking only when Chrome has autofilled the field."""
     clicked = set()
@@ -544,8 +549,7 @@ def loans(user=None, pin=None, timeout=60):
                 # account page before using the library's own form.
                 p.goto(USER, marker="!!document.querySelector('#modalAuth, #checkouts_table')")
                 if not user or not pin:
-                    raise KohaError('could not sign in through the SHH account, and no '
-                                    'credentials in ~/.secrets/KOHA_CREDENTIALS to fall back on')
+                    _no_credentials()
                 state = p.eval(LOGIN_JS % (json.dumps(user), json.dumps(pin)))
                 if state != 'submitted':
                     raise KohaError('could not find the library login form (%s)' % state)

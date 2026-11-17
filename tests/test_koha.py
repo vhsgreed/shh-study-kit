@@ -25,11 +25,17 @@ def test_biblionumber_must_be_digits():
         koha.availability('../../etc/passwd')
 
 
-def test_loans_without_credentials_names_the_files(monkeypatch, tmp_path):
-    monkeypatch.setattr(koha, '_secret', lambda name: None)
+def test_credentials_file_is_two_lines(monkeypatch, tmp_path):
+    f = tmp_path / 'KOHA_CREDENTIALS'
+    f.write_text('username\n1234\n')
+    monkeypatch.setenv('KOHA_CREDENTIALS_FILE', str(f))
+    assert koha.credentials() == ('username', '1234')
+
+
+def test_missing_credentials_names_the_file():
     with pytest.raises(koha.KohaError) as exc:
-        koha.loans()
-    assert 'KOHA_USER' in str(exc.value) and 'KOHA_PIN' in str(exc.value)
+        koha._no_credentials()
+    assert 'KOHA_CREDENTIALS' in str(exc.value)
 
 
 def test_tools_are_registered_with_schemas():
