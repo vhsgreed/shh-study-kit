@@ -1,238 +1,172 @@
 # ladok-vakt
 
-**Email notifications when your Ladok course registration opens, before the window closes.**
-A small watch script for Swedish university students: course registration and exam
-registration windows from Ladok, announced once, on the right day, silent otherwise.
+**Get email when Ladok registration opens, before the window closes.**
 
-`ladok-vakt` is read only. It never registers anything for you.
-
-```
-- Grundläggande farmakologi och omvårdnad (1SFOM2): anmälan 2026-11-23 till 2026-11-30 [om 7 d], kursstart 2026-11-30
-- Människan i hälsa och sjukdom del 1 (2SHS11): anmälan 2027-01-18 till 2027-01-25 [om 63 d], kursstart 2027-01-25
-```
+`ladok-vakt` watches course registration and exam registration in Ladok.
 
 Swedish: [README.md](README.md).
 
 ---
 
-## The problem
+## Why ladok-vakt?
 
-Ladok has no reminder for course registration. The window is often one week, it
-lives only inside studentwebb, and missing it means no place on the course or no
-seat at the exam. Calendar reminders work until a date moves or a tillfälle is
-published late, which is exactly when they stop working.
+Ladok does not offer email notifications in its student service; this script works around that.
 
-`ladok-vakt` reads those windows out of Ladok and runs as often as you like. It is
-built to run from cron once a day and to be quiet.
-
-## What it does
-
-- Reads every course tillfälle with its **registreringsperiod** (registration opens, registration closes) and the course period.
-- Reads **exam registration** windows where Ladok exposes them.
-- Prints one line per window that is open now or closes within N days.
-- **Shouts only on faults**: no successful fetch for 36 h, empty course list, dead session, unparseable answer.
-- Posts a Monday heartbeat so silence can be told apart from silence.
-
-## What it does not do
-
-- No registration, deregistration or change of anything. GET only.
-- No login unless you opt in. You log in once in a Chrome profile and the script uses
-  that session; optional re-login exists, off by default, see
-  [Optional login](#optional-login-off-by-default).
-- No daily digest. Silence is a feature.
+`ladok-vakt` fetches the registration dates for courses and exams directly from [Ladok](https://student.ladok.se/) and reminds the user by email or another channel.
 
 ## Quick start
 
+### Requirements
+
+- Python 3.8+
+- Chrome or Chromium
+- The Python package `websockets`
+
+### Install and try it
+
 ```bash
 git clone https://github.com/vhsgreed/ladok-vakt && cd ladok-vakt
-python3 -m pip install websockets          # the only dependency outside stdlib
+python3 -m pip install websockets
 
-# 1. A Chrome with its own profile, where YOU log in to Ladok once
+# Start Chrome with its own profile and log in to Ladok there once
 flatpak run com.google.Chrome \
   --user-data-dir=$HOME/.config/ladok-vakt-chrome \
   --remote-debugging-port=9233
+# Non-Flatpak: google-chrome with the same flags
 
-# 2. Try a read
+# Try reading from Ladok
 python3 -m ladok_vakt --all
-
-# 3. Configure a channel (below) and drop it in cron
 ```
 
-`python3 -m ladok_vakt` with no arguments is cron mode: it writes only when there
-is something worth saying.
+Run `python3 -m ladok_vakt` with no arguments for cron mode: it writes only when
+there is something to say. Set up a notification channel below to get alerts.
 
-## Optional login (off by default)
+## Features
 
-The Ladok session ends: typically when the browser restarts, or after a while idle.
-With `LADOK_AUTOLOGIN=1` the script tries to sign in again before it raises a fault,
-using the password Chrome has already saved for your institution's login page.
+- Fetches your course occasions, registration periods and course periods.
+- Writes one line per window that is open now or closes within the chosen number of days.
+- Alerts on faults, for example if no fetch has succeeded for 36 hours, the course list is empty, the session has died or the answer is malformed.
+- Sends a weekly health check on Mondays.
+- Does not register, unregister or change anything.
+- Optional login feature for keeping a session alive over time
 
-```bash
-export LADOK_IDP_ENTITY='https://swamid2.shh.se/idp/shibboleth'   # your SWAMID entityID
-export LADOK_AUTOLOGIN=1
-python3 -m ladok_vakt --login      # try it once, in advance
-```
+## Schedule the run
 
-What it does: opens the SWAMID login, waits until Chrome has filled the form by
-itself, clicks Login with a real mouse event, and checks that Ladok answers before
-reporting success.
+### cron
 
-What it does **not** do, and this is the part worth auditing yourself: it never reads
-the value of the password field, stores nothing, writes nothing, sends nothing, and
-does not touch the browser's password-manager API. It asks "are the fields filled?"
-and clicks. The code is `ladok_vakt/login.py`, and `tests/` contains a test that fails
-if anyone adds field-value reads there.
-
-Requirements: the password is saved in the Chrome profile the script uses, and the
-login needs nothing further (2FA, one-time code, app approval). If it does, the
-re-login fails and you get a fault alert, which is the point: it does not guess.
-
-## Integrate it into your workflow
-
-### Scheduling
-
-**cron** (daily at 07:10):
+Example: run at 07:10 every day.
 
 ```cron
 10 7 * * *  cd $HOME/src/ladok-vakt && LADOK_MAIL_TO=you@example.com /usr/bin/python3 -m ladok_vakt
 ```
 
-**systemd user timer**: see [`examples/`](examples/).
+### systemd
 
-**Agents** (Hermes, Claude Code, anything MCP-adjacent): point the agent at
-[`skill/SKILL.md`](skill/SKILL.md), or run the CLI from the agent's own cron. The
-output is line based and parseable on purpose.
-
-### Channel: email through Resend
-
-Fastest route to mail without an SMTP password. Verify your domain in Resend and:
+Example files are in [`examples/`](examples/).
 
 ```bash
-export LADOK_MAIL_TO=you@example.com
-export LADOK_MAIL_FROM='ladok-vakt <vakt@your-domain.se>'
-echo 're_...' > ~/.secrets/RESEND_KEY && chmod 600 ~/.secrets/RESEND_KEY
+cp examples/ladok-vakt.service examples/ladok-vakt.timer ~/.config/systemd/user/
+systemctl --user daemon-reload && systemctl --user enable --now ladok-vakt.timer
 ```
 
-### Channel: email through Gmail and an app password
+### Agent
 
-No third party, but Gmail needs an **app password** (Google Account > Security >
-App passwords, requires 2FA):
+Put the run in the agent's cron, or register
+[`skill/SKILL.md`](skill/SKILL.md) as a skill. The script is built to be run
+without having to be interpreted as free text.
 
-```bash
-export LADOK_MAIL_TO=you@example.com
-export LADOK_MAIL_FROM=you@gmail.com
-export LADOK_SMTP_USER=you@gmail.com
-echo 'abcd efgh ijkl mnop' > ~/.secrets/GMAIL_APP_PASSWORD && chmod 600 ~/.secrets/GMAIL_APP_PASSWORD
-export LADOK_SMTP_PASSWORD_FILE=$HOME/.secrets/GMAIL_APP_PASSWORD
-```
+## Choose a notification channel
 
-With `LADOK_SMTP_PASSWORD_FILE` set, SMTP is used instead of Resend.
-
-### Other channels
-
-All of them can be set at once; the notice goes out on every configured channel.
-
-| Channel | Variables | Note |
+| Channel | Variables | Information |
 |---|---|---|
-| Telegram | `LADOK_TELEGRAM_TOKEN`, `LADOK_TELEGRAM_CHAT` | simplest push to a phone |
-| Slack | `LADOK_WEBHOOK_URL`, `LADOK_WEBHOOK_FORMAT=slack` | incoming webhook, sends `{"text": ...}` |
-| Discord | `LADOK_WEBHOOK_URL`, `LADOK_WEBHOOK_FORMAT=discord` | sends `{"content": ...}` |
-| ntfy | `LADOK_WEBHOOK_URL=https://ntfy.sh/<topic>`, `LADOK_WEBHOOK_FORMAT=ntfy` | no signup, topic name only |
-| Any webhook | `LADOK_WEBHOOK_URL=...`, `LADOK_WEBHOOK_FORMAT=generic` | `{"text": ..., "source": "ladok-vakt"}` |
-| Any command | `LADOK_NOTIFY_COMMAND='curl -d @- https://...'` | message on stdin, last resort |
+| **Resend** (email) | `LADOK_MAIL_TO`, `LADOK_MAIL_FROM`, `~/<PATH TO RESEND_KEY>` | The mail is sent via `https://api.resend.com/emails`. Works on the free tier. |
+| **Gmail** (email) | `LADOK_MAIL_TO`, `LADOK_MAIL_FROM`, `LADOK_SMTP_USER`, `LADOK_SMTP_PASSWORD_FILE` | Requires an [app password](https://myaccount.google.com/apppasswords) from a Gmail account with 2FA. Set `LADOK_SMTP_PASSWORD_FILE=$<PATH TO GMAIL_APP_PASSWORD>`. When the variable is set, SMTP is used instead of Resend. |
+| **Telegram** | `LADOK_TELEGRAM_TOKEN`, `LADOK_TELEGRAM_CHAT` | Bot and chat id; simple push to the phone. |
+| **Slack** | `LADOK_WEBHOOK_URL`, `LADOK_WEBHOOK_FORMAT=slack` | Incoming webhook; sends `{"text": ...}`. |
+| **Discord** | `LADOK_WEBHOOK_URL`, `LADOK_WEBHOOK_FORMAT=discord` | Sends `{"content": ...}`. |
+| **ntfy** | `LADOK_WEBHOOK_URL=https://ntfy.sh/<topic>`, `LADOK_WEBHOOK_FORMAT=ntfy` | No registration; pick a topic name. |
+| **Your own webhook** | `LADOK_WEBHOOK_URL=...`, `LADOK_WEBHOOK_FORMAT=generic` | Sends `{"text": ..., "source": "ladok-vakt"}`. |
+| **Your own command** | `LADOK_NOTIFY_COMMAND='curl -d @- https://...'` | Passed on via stdin |
+
+## Optional automatic login
+
+The Ladok session can end when the browser restarts or after a period of inactivity.
+With `LADOK_AUTOLOGIN=1` the script tries to log in again before it raises a fault. It
+assumes you have the login saved in the session the script uses.
 
 ```bash
-python3 -m ladok_vakt --test-mail    # proves the channels answer
+export LADOK_IDP_ENTITY='https://swamid2.shh.se/idp/shibboleth'   # your institution's SWAMID entityID
+export LADOK_AUTOLOGIN=1
+python3 -m ladok_vakt --login   # try it in advance
 ```
+
+The script opens the login via SWAMID, waits until Chrome has filled in the form
+and clicks Login with a real mouse event. It then checks that Ladok answers before
+the login is reported as successful.
+
+**Security boundaries:** the script never reads the value of the password field, stores
+nothing, writes nothing, sends nothing and does not use the browser's password-manager
+API. It only checks whether the fields have been filled in, and clicks. See the code in
+`ladok_vakt/login.py`; the test in `tests/` fails if anyone adds reading of field
+values.
+
+For the re-login to work, the password must be saved in the Chrome profile the script
+uses. The login must not require 2FA, a one-time code or approval in an app. If it
+does, the re-login fails and you get a fault alert: the script does not guess.
 
 ## Configuration
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `LADOK_CDP` | `http://127.0.0.1:9233` | Chrome with DevTools, your logged-in session |
-| `LADOK_LAROSATE` | `38` | your university's id in Ladok (38 = Sophiahemmet) |
-| `LADOK_MAIL_TO` | empty | recipient, empty disables mail |
-| `LADOK_MAIL_FROM` | `ladok-vakt <vakt@example.org>` | sender, must be verified in Resend |
-| `LADOK_CLOSE_DAYS` | `3` | alert when a window closes within this many days |
-| `LADOK_STALE_HOURS` | `36` | alert when no successful fetch is older than this |
-| `LADOK_MAIL_MIN_HOURS` | `20` | at most one fault mail per channel per day |
-| `LADOK_HEARTBEAT` | `1` | Monday liveness line, `0` disables |
-| `LADOK_STATE_DIR` | `~/.local/state/ladok-vakt` | state and log |
+| `LADOK_CDP` | `http://127.0.0.1:9233` | Chrome DevTools endpoint for your logged-in session |
+| `LADOK_LAROSATE` | `38` | The institution's id in Ladok (38 = Sophiahemmet) |
+| `LADOK_MAIL_TO` | empty | Recipient; an empty value turns email off |
+| `LADOK_MAIL_FROM` | `ladok-vakt <vakt@example.org>` | Sender; must be verified with Resend |
+| `LADOK_CLOSE_DAYS` | `3` | Alert when the window closes within that many days |
+| `LADOK_AUTOLOGIN` | `0` | Set to `1` to try logging in again with the saved password |
+| `LADOK_IDP_ENTITY` | empty | The institution's SWAMID entityID; required for re-login |
+| `LADOK_STALE_HOURS` | `36` | Alert when the last successful fetch is older than this |
+| `LADOK_MAIL_MIN_HOURS` | `20` | Minimum time between fault alerts per channel |
+| `LADOK_HEARTBEAT` | `1` | Weekly health check on Mondays; `0` turns it off |
+| `LADOK_STATE_DIR` | `~/.local/state/ladok-vakt` | Directory for state and log |
 
-State in `$LADOK_STATE_DIR/state.json`, history in `ladok-vakt.log`.
+State is stored in `$LADOK_STATE_DIR/state.json`, and history in `ladok-vakt.log`.
 
 ## How it works
 
-Ladok has no student API with a token. Studentwebb is a web app that fetches
-everything through `https://student.ladok.se/student/proxy/<larosate>/...` with the
-session cookie. `ladok-vakt` does the same, from a tab on the same origin, over the
-DevTools protocol:
+Ladok has no student API with tokens. Studentwebben fetches data via
+`https://student.ladok.se/student/proxy/<institution>/...` with the session cookie.
+`ladok-vakt` makes the equivalent calls from a tab on the same origin, via the Chrome
+DevTools protocol.
 
 | Data | Endpoint |
 |---|---|
-| logged-in student | `/studiedeltagande/internal/student/inloggad/som` |
-| courses + registration window | `/studiedeltagande/internal/tillfallesdeltagande/kurstillfallesdeltagande/student/<uid>` |
-| exam registration | `/resultat/internal/studentweb/aktivitetstillfalle/inloggadstudent/relevanta` |
+| Logged-in student | `/studiedeltagande/internal/student/inloggad/som` |
+| Course occasions and registration period | `/studiedeltagande/internal/tillfallesdeltagande/kurstillfallesdeltagande/student/<uid>` |
+| Exam registrations | `/resultat/internal/studentweb/aktivitetstillfalle/inloggadstudent/relevanta` |
 
-Answers are XML in Ladok's schema; the fields used are `sd:Registreringsperiod`
-(`base:Startdatum` / `base:Slutdatum`), `sd:Tillstand` and `sd:UtbildningsPeriodFran/Till`.
-
-## Where Ladok is used
-
-Ladok is used by Swedish universities and colleges, with one id per institution:
-set `LADOK_LAROSATE` and the same script works at your school. Norway, Denmark
-and Finland use other systems, so this tool is Sweden specific.
-
-## Troubleshooting
-
-- **"ingen Ladok-session"**: the session expired, or Chrome is not running with
-  `--remote-debugging-port=9233`. Check `http://127.0.0.1:9233/json/version`, log in
-  to Ladok in that tab, run again.
-- **Empty answer though you know you have courses**: check `LADOK_LAROSATE`. A wrong
-  university id gives a valid, empty answer.
-- **No mail but the line prints**: `LADOK_MAIL_TO` is empty, or the Resend key is not
-  where `LADOK_RESEND_KEY_FILE` says. The log says which.
-- **Resend returns 403**: Cloudflare in front of Resend rejects some user agents. The
-  script sends its own; other tools sharing the key may need the same.
-- **Why not Ladok's own reminder?** Ladok has no reminder for course registration.
-  Exam registration may be announced by the university, but that is a local routine,
-  not something to rely on.
+The answers are XML in Ladok's schema. The script uses, among other fields,
+`sd:Registreringsperiod` (`base:Startdatum` / `base:Slutdatum`), `sd:Tillstand`
+and `sd:UtbildningsPeriodFran/Till`.
 
 ## Privacy
 
-No data leaves the machine except the notice itself. The session cookie stays in your
-Chrome profile. The script sends course names, dates and a warning line to the channel
-you chose. No analytics, no telemetry, no account.
+No data leaves the computer except the alert itself. The session cookie stays in your
+Chrome profile. The script only sends course names, dates and warning text to the
+channel you choose. No statistics, telemetry or account of any kind.
 
-**Login:** the password never leaves the browser. The script does not read, store,
-send or log it, and it holds no account of its own: it uses the login you saved in
-your own Chrome profile. Re-login is off by default, and it only clicks a form Chrome
-has already filled. If you enable it, whether that is allowed where you study is your
-call and your responsibility.
-
-## Requirements
-
-Python 3.8+, `websockets`, a Chrome or Chromium you can start with a DevTools port.
-Linux, macOS and Windows.
-
-## Development
-
-```bash
-python3 -m pytest tests -q     # 8 tests, no network
-```
+The password never leaves the browser: the script does not read, store, send or log
+it. It uses the login you saved yourself in Chrome. Automatic re-login is off by
+default; if you choose to enable it, you are responsible for it following your
+institution's rules.
 
 ## License
 
-MIT. Do what you like, no warranty.
+MIT
 
 ---
 
 <sub>
-
-**In honour of Xom**, god of chaos, who answers prayers with teleport traps and
-grants wishes nobody made. This watch was written in that spirit: a student asked
-for an alert when registration opens and got a script that would rather stay silent
-than lie. Xom finds the whole arrangement very funny. Xom is not done with you.
 
 *Xom is interested. Point your agent at the repo and see what happens.*
 
