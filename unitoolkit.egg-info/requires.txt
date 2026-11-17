@@ -1,0 +1,9 @@
+websockets>=10
+
+[dev]
+pytest>=7
+build
+twine
+
+[docs]
+pdftotext

@@ -1,0 +1,132 @@
+Metadata-Version: 2.4
+Name: unitoolkit
+Version: 0.7.0
+Summary: Read-only tools an agent needs to run a Swedish university student's week: Canvas, Ladok, TimeEdit, the library, and the subscribed research databases, with APA citations
+Author: vhsgreed
+License: MIT
+Project-URL: Homepage, https://github.com/vhsgreed/shh-study-kit
+Project-URL: Issues, https://github.com/vhsgreed/shh-study-kit/issues
+Project-URL: Source, https://github.com/vhsgreed/shh-study-kit
+Keywords: canvas,ladok,timeedit,koha,library,cinahl,cochrane,pubmed,apa,citations,student,university,sweden,nursing,mcp,agent
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Topic :: Education
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Education
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: websockets>=10
+Provides-Extra: docs
+Requires-Dist: pdftotext; extra == "docs"
+Provides-Extra: dev
+Requires-Dist: pytest>=7; extra == "dev"
+Requires-Dist: build; extra == "dev"
+Requires-Dist: twine; extra == "dev"
+Dynamic: license-file
+
+# unitoolkit
+
+**Give your agent the student's whole university, read-only.** Canvas, SharePoint, Ladok,
+TimeEdit, PubMed and Libris, as 17 tools behind one MCP server. Built for nursing students
+at Sophiahemmet Högskola. The Canvas half works at any Canvas school.
+
+```bash
+claude mcp add unitoolkit -- python3 -m unitoolkit.mcp      # Claude Code
+codex mcp add unitoolkit -- python3 -m unitoolkit.mcp       # Codex
+# Hermes, Cursor, anything MCP: command `python3 -m unitoolkit.mcp`, cwd = this repo
+```
+
+Then ask your agent "what is due this week?" and let it work.
+
+## For agents
+- **Start with [`skill/SKILL.md`](skill/SKILL.md).** It is written for you: tool table,
+  rules, and the pitfalls that cost us an afternoon.
+- **Library (Koha):** `koha_search`, `koha_item`, `koha_loans`, `koha_status` read
+  biblioteket.shh.se through a proxied Chrome, because that site's Cloudflare answers plain
+  HTTP clients with 429 and the catalogue is rendered by JavaScript. Transport: Chrome with
+  `--proxy-server=http://127.0.0.1:8118`, where [`scripts/apify_chain_proxy.py`](scripts/apify_chain_proxy.py)
+  chains to a residential proxy (password from `~/.secrets/APIFY_PROXY_PASSWORD`). Loans need
+  `~/.secrets/KOHA_USER` and `~/.secrets/KOHA_PIN`.
+- **Ask for sources in plain words.** "Find three peer-reviewed sources on delirium prevention,
+  with APA references" becomes `find_sources`: one query over CINAHL, PubMed and Cochrane,
+  deduplicated by DOI, every hit with an APA 7 reference from the publisher's own metadata.
+- **Databases (CINAHL, PsycInfo, Cochrane, Web of Science):** `db_search`, `db_detail`, `db_status`, `db_open`, `db_list`
+  go through the school's OCLC EZproxy (`shh.idm.oclc.org`), which hands the visitor to the
+  Microsoft Entra tenant. One sign-in with "stay signed in" in the agent browser is enough
+  for weeks of searches afterwards; `db_status` says whether that session still holds, and
+  every function raises instead of returning an empty result set when it does not. Searches
+  return citation fields (authors, journal, year, volume, issue, pages, DOI, abstract).
+- **Full text:** `db_fulltext doi=...` fetches the PDF of a subscribed article through the same
+  proxy (tested on paywalled Wiley and Elsevier articles, and a 188-page Cochrane review). It
+  captures the PDF at the network layer, because publishers answer a script fetch with a viewer
+  or a bot check. Publishers outside the school's EZproxy (De Gruyter, for one) get a plain
+  "no subscription route, order via fjärrlån". Capped at 20 downloads an hour: the licences
+  allow reading for study, and bulk downloading gets the whole school's proxy blocked.
+- **Schemas:** [`tools.json`](tools.json) (MCP `inputSchema` format, regenerate with
+  `python -m unitoolkit manifest > tools.json`).
+- **CLI fallback:** `python -m unitoolkit <tool> key=value ...`, JSON on stdout, errors on stderr.
+- **Extend:** add one decorated function in [`unitoolkit/tools.py`](unitoolkit/tools.py). It shows up
+  in the CLI, the MCP server and the manifest at once. See [`AGENTS.md`](AGENTS.md).
+
+## Tools
+| Tool | Source | Auth |
+|---|---|---|
+| `upcoming`, `courses`, `assignment`, `mirror`, `canvas_get` | Canvas REST | personal access token |
+| `login_check`, `page`, `fetch` | any SSO site | logged-in agent browser (CDP) |
+| `sharepoint_download`, `programme` | SharePoint, shh.se | logged-in agent browser |
+| `ladok_windows` | Ladok studentwebb (subrepo [`vendor/ladok-vakt`](vendor/ladok-vakt)) | logged-in agent browser |
+| `timeedit` | TimeEdit | none |
+| `pubmed`, `libris` | NCBI E-utilities, Libris | none |
+| `db_search`, `db_detail`, `db_list`, `db_status`, `db_open` | EBSCOhost (CINAHL, PsycInfo) via EZproxy | school Entra session |
+| `db_fulltext` | publisher sites via EZproxy (Wiley, Elsevier, Cochrane, ...) | school Entra session |
+| `find_sources`, `apa` | CINAHL + PubMed + Cochrane (+ PsycInfo, WoS), APA from doi.org | school Entra session (PubMed: none) |
+
+All tested live against SHH on 2026-11-15: 3 Canvas courses mirrored, 21 of 21 programme
+courses mapped with kursplan and litteraturlista, MCP handshake and tool calls verified.
+
+## Subrepo: ladok-vakt
+
+[`vendor/ladok-vakt`](vendor/ladok-vakt) is a git subtree of
+[ladok-vakt](https://github.com/vhsgreed/ladok-vakt): mejl när Ladok-anmälan öppnar
+(email alerts for registration windows). It is here because a Canvas mirror answers
+"what is due" and Ladok answers "what can I still register for", and a student needs
+both. Sync it with:
+
+```bash
+git subtree pull --prefix=vendor/ladok-vakt https://github.com/vhsgreed/ladok-vakt main --squash
+```
+
+The `ladok_windows` tool is a thin read-only wrapper around it. Run the watcher
+itself (with mail and cron) from the standalone repo.
+
+## Setup
+```bash
+git clone https://github.com/vhsgreed/unitoolkit && cd unitoolkit
+pip install websockets          # only for the browser tools; the rest is stdlib
+echo "<canvas token>" > ~/.secrets/CANVAS_TOKEN && chmod 600 ~/.secrets/CANVAS_TOKEN
+# browser tools: a separate Chrome profile with CDP, log in once by hand
+google-chrome --user-data-dir=$HOME/.config/unitoolkit-chrome --remote-debugging-port=9233
+```
+Other schools: `export CANVAS_BASE=https://<school>.instructure.com`.
+
+## Ground rules
+Read-only toward the school. No login automation: the human logs in, the agent reads. Course
+material is copyrighted; mirrors stay on your disk and out of git (`.gitignore` covers it).
+
+## License
+MIT. Do what you like; no warranty.
+
+---
+
+<sub>
+
+**In honour of Xom**, god of chaos, who answers prayers with teleport traps and grants
+wishes nobody made. This kit was written in that spirit: a student asked for a deadline
+list and an agent mapped six terms of a nursing programme. Xom finds the whole arrangement
+very funny. Xom is not done with you.
+
+*Xom is interested. Point your agent at the repo and see what happens.*
+
+</sub>

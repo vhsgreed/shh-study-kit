@@ -180,9 +180,9 @@ def _check_databases():
 def _check_library():
     from . import koha
     st = koha.status()
-    if not st.get('chain_up'):
-        return 'fail', 'library proxy not running on %s' % st.get('chain_proxy'), \
-            'start scripts/apify_chain_proxy.py'
+    if st.get('proxy_enabled', True) and not st.get('chain_up'):
+        return 'warn', 'library proxy not running on %s (starts on demand)' % st.get('chain_proxy'), \
+            'only needed where the library drops your IP; otherwise set KOHA_PROXY=0'
     if not st.get('cdp_up'):
         return 'warn', 'library browser is down (starts on demand)', ''
     try:

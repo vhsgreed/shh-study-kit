@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unitoolkit"
+version = "0.7.0"
+description = "Read-only tools an agent needs to run a Swedish university student's week: Canvas, Ladok, TimeEdit, the library, and the subscribed research databases, with APA citations"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "vhsgreed"}]
+keywords = ["canvas", "ladok", "timeedit", "koha", "library", "cinahl", "cochrane", "pubmed",
+            "apa", "citations", "student", "university", "sweden", "nursing", "mcp", "agent"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Education",
+  "Environment :: Console",
+  "Intended Audience :: Education",
+]
+# Every dependency is stdlib only, except the Chrome DevTools client: connecting to a modern
+# Chrome needs a websocket client, and reimplementing one would be worse than this one line.
+dependencies = ["websockets>=10"]
+
+[project.optional-dependencies]
+docs = ["pdftotext"]          # optional: `docs` extracts PDF text via the pdftotext binary
+dev = ["pytest>=7", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/vhsgreed/shh-study-kit"
+Issues = "https://github.com/vhsgreed/shh-study-kit/issues"
+Source = "https://github.com/vhsgreed/shh-study-kit"
+
+[project.scripts]
+unitoolkit = "unitoolkit.__main__:cli"
+unitoolkit-mcp = "unitoolkit.mcp:main"
+unitoolkit-chainproxy = "unitoolkit.chainproxy:main"
+
+[tool.setuptools]
+packages = ["unitoolkit", "ladok_vakt"]
+
+[tool.setuptools.package-dir]
+unitoolkit = "unitoolkit"
+ladok_vakt = "vendor/ladok-vakt/ladok_vakt"
+
+[tool.setuptools.package-data]
+unitoolkit = ["../tools.json"]

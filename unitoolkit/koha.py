@@ -15,6 +15,7 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -22,14 +23,30 @@ from pathlib import Path
 
 CDP = os.environ.get('KOHA_CDP', 'http://127.0.0.1:9334')
 CHAIN_PORT = int(os.environ.get('KOHA_CHAIN_PORT', '8118'))
-PROFILE = os.environ.get(
-    'KOHA_CHROME_PROFILE',
-    str(Path.home() / '.hermes/profiles/school-helper/cache/scratch/koha-chrome'))
-_HERE = Path(__file__).resolve().parents[1]
-_DEFAULT_CHAIN = (_HERE / 'scripts/apify_chain_proxy.py')
-if not _DEFAULT_CHAIN.exists():                      # older layout: the profile copy
-    _DEFAULT_CHAIN = Path.home() / '.hermes/profiles/school-helper/scripts/apify_chain_proxy.py'
-CHAIN_SCRIPT = os.environ.get('KOHA_CHAIN_SCRIPT', str(_DEFAULT_CHAIN))
+PROFILE = os.environ.get('KOHA_CHROME_PROFILE',
+                         str(Path.home() / '.cache/unitoolkit/koha-chrome'))
+PROXY_PASSWORD_FILE = os.path.expanduser(os.environ.get('CHAIN_UPSTREAM_PASSWORD_FILE',
+                                                        '~/.secrets/APIFY_PROXY_PASSWORD'))
+# Chrome flags for the library profile. SameSite enforcement is off because the SSO hand-back
+# is a cross-site POST and Koha's CGISESSID is SameSite=Lax (dropped after a 2-minute grace
+# that two-factor outlasts). This profile holds no other sessions.
+CHROME_FLAGS = ['--no-first-run', '--no-default-browser-check',
+                '--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure']
+
+
+def _chrome_cmd():
+    """How to start Chrome here: KOHA_CHROME_SCRIPT, else a Chrome on PATH, else flatpak."""
+    import shutil
+    script = os.environ.get('KOHA_CHROME_SCRIPT', '')
+    if script and Path(script).exists():
+        return [script]
+    for name in ('google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser'):
+        exe = shutil.which(name)
+        if exe:
+            return [exe]
+    if shutil.which('flatpak'):
+        return ['flatpak', 'run', 'com.google.Chrome']
+    raise KohaError('no Chrome found: install Chrome or set KOHA_CHROME_SCRIPT')
 BASE = 'https://biblioteket.shh.se'
 SEARCH = BASE + '/cgi-bin/koha/opac-search.pl?idx=&q=%s&weight_search=1'
 DETAIL = BASE + '/cgi-bin/koha/opac-detail.pl?biblionumber=%s'
@@ -62,22 +79,29 @@ def _cdp_up():
 
 def ensure_browser(timeout=40):
     """Start the chain proxy and the proxied Chrome if they are not up. Idempotent."""
-    if not _port_open(CHAIN_PORT):
-        if not Path(CHAIN_SCRIPT).exists() or not Path.home().joinpath('.secrets/APIFY_PROXY_PASSWORD').exists():
-            raise KohaError('no chain proxy and no Apify credentials: cannot reach biblioteket.shh.se '
-                            '(your home IP is dropped on :443)')
-        subprocess.Popen([str(Path.home() / '.local/venvs/unitoolkit/bin/python'), CHAIN_SCRIPT],
+    use_proxy = os.environ.get('KOHA_PROXY', '1').lower() not in ('0', 'false', 'no', '')
+    if use_proxy and not _port_open(CHAIN_PORT):
+        if not Path(PROXY_PASSWORD_FILE).exists():
+            raise KohaError('the library proxy is not running and %s is missing. If your network '
+                            'reaches biblioteket.shh.se directly, set KOHA_PROXY=0.' % PROXY_PASSWORD_FILE)
+        subprocess.Popen([sys.executable, '-m', 'unitoolkit.chainproxy'],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         for _ in range(20):
             time.sleep(0.5)
             if _port_open(CHAIN_PORT):
                 break
     if not _cdp_up():
-        subprocess.Popen(['flatpak', 'run', 'com.google.Chrome', '--user-data-dir=' + PROFILE,
-                          '--remote-debugging-port=' + CDP.rsplit(':', 1)[1],
-                          '--no-first-run', '--no-default-browser-check',
-                          '--proxy-server=http://127.0.0.1:%d' % CHAIN_PORT],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        cmd = _chrome_cmd()
+        if len(cmd) == 1 and os.environ.get('KOHA_CHROME_SCRIPT') == cmd[0]:
+            args = cmd                                  # the script carries its own flags
+        else:
+            Path(PROFILE).mkdir(parents=True, exist_ok=True)
+            args = cmd + ['--user-data-dir=' + PROFILE,
+                          '--remote-debugging-port=' + CDP.rsplit(':', 1)[1]] + CHROME_FLAGS
+            if use_proxy:
+                args.append('--proxy-server=http://127.0.0.1:%d' % CHAIN_PORT)
+        subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
         for _ in range(int(timeout / 1.5)):
             time.sleep(1.5)
             if _cdp_up():
@@ -656,5 +680,6 @@ def loans(user=None, pin=None, timeout=60):
 
 def status():
     return {'cdp': CDP, 'cdp_up': _cdp_up(), 'chain_proxy': '127.0.0.1:%d' % CHAIN_PORT,
+            'proxy_enabled': os.environ.get('KOHA_PROXY', '1').lower() not in ('0', 'false', 'no', ''),
             'chain_up': _port_open(CHAIN_PORT), 'profile': PROFILE,
             'credentials': bool(_secret('KOHA_USER') and _secret('KOHA_PIN'))}

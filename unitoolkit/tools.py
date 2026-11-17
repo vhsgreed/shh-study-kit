@@ -102,10 +102,12 @@ def ladok_windows(close_days=None):
     LADOK_AUTOLOGIN=1 (with LADOK_IDP_ENTITY) lets it restore the session once first.
     """
     import sys
-    _vendor = pathlib.Path(__file__).resolve().parents[1] / 'vendor' / 'ladok-vakt'
-    if str(_vendor) not in sys.path:
+    try:
+        from ladok_vakt import core              # installed wheel ships it as a package
+    except ImportError:                          # source checkout: the vendored subtree
+        _vendor = pathlib.Path(__file__).resolve().parents[1] / 'vendor' / 'ladok-vakt'
         sys.path.insert(0, str(_vendor))
-    from ladok_vakt import core
+        from ladok_vakt import core
     cfg = core.Config()
     if close_days is not None:
         cfg.close_days = int(close_days)

@@ -26,7 +26,7 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
 7. **Koha login has two routes, and only the session one is proven.** The library offers the
    local form (username + 4-digit pinkod, `~/.secrets/KOHA_CREDENTIALS`, two lines) and
    "Log in using your SHH account", which hands off to Shibboleth and then to Microsoft Entra.
-   Submitting the local form with a personnummer, `ht26-karsun` or the full e-mail was refused
+   Submitting the local form with a personnummer, the SSO username or the full e-mail was refused
    from this machine with a plain re-render and no error text, so do not keep guessing
    usernames: repeated failures risk a lockout. Preferred path: `koha_open_login`, a human signs
    in once in the proxied window, `koha_wait_login`, then `koha_loans` reads the session.

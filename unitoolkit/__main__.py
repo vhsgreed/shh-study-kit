@@ -54,5 +54,10 @@ def main(argv):
         sys.exit(str(e))
 
 
+def cli():
+    """Console-script entry point (`unitoolkit ...` after pip install)."""
+    main(sys.argv[1:])
+
+
 if __name__ == "__main__":
     main(sys.argv[1:])

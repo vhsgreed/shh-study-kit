@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Local chaining proxy: Chrome cannot take user:pass in --proxy-server for https,
-so this listens on 127.0.0.1:8118 and adds the upstream Proxy-Authorization itself.
+"""Local chaining proxy for the library browser: `python -m unitoolkit.chainproxy`.
 
-Upstream defaults to Apify's residential group (host/port from env), password read
-from ~/.secrets/APIFY_PROXY_PASSWORD. Never logs the password.
+Chrome cannot take user:pass in --proxy-server for https, so this listens on 127.0.0.1:8118
+and adds the upstream Proxy-Authorization itself. Only needed where the library drops your
+own IP; most students reach their library directly and never start it.
+
+Upstream: CHAIN_UPSTREAM_HOST/PORT/USER (default Apify residential, sticky session, since
+Koha binds a login to the client IP). Password from CHAIN_UPSTREAM_PASSWORD_FILE (default
+~/.secrets/APIFY_PROXY_PASSWORD), read at start-up, never logged.
 """
 import base64
 import os
@@ -18,8 +22,15 @@ UP_PORT = int(os.environ.get('CHAIN_UPSTREAM_PORT', '8000'))
 # Sticky session: Koha binds the login to the client IP, so every request in the flow
 # must leave through the same residential exit. Apify keeps a session ~30 minutes.
 UP_USER = os.environ.get('CHAIN_UPSTREAM_USER', 'groups-RESIDENTIAL,session-kohavakt')
-PW = open(os.path.expanduser('~/.secrets/APIFY_PROXY_PASSWORD')).read().strip()
-AUTH = 'Basic ' + base64.b64encode(f'{UP_USER}:{PW}'.encode()).decode()
+PW_FILE = os.path.expanduser(os.environ.get('CHAIN_UPSTREAM_PASSWORD_FILE',
+                                           '~/.secrets/APIFY_PROXY_PASSWORD'))
+AUTH = ''          # set in main(): importing this module must not need the password
+
+
+def _auth():
+    with open(PW_FILE) as f:
+        pw = f.read().strip()
+    return 'Basic ' + base64.b64encode(f'{UP_USER}:{pw}'.encode()).decode()
 
 
 def pipe(a, b):
@@ -86,6 +97,8 @@ def handle(client):
 
 
 def main():
+    global AUTH
+    AUTH = _auth()
     srv = socket.socket()
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind(LISTEN)

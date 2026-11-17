@@ -47,5 +47,6 @@ def test_tools_are_registered_with_schemas():
 
 def test_status_reports_the_transport_without_starting_anything():
     st = koha.status()
-    assert set(st) == {'cdp', 'cdp_up', 'chain_proxy', 'chain_up', 'profile', 'credentials'}
+    assert set(st) == {'cdp', 'cdp_up', 'chain_proxy', 'chain_up', 'proxy_enabled',
+                       'profile', 'credentials'}
     assert isinstance(st['cdp_up'], bool) and isinstance(st['chain_up'], bool)
