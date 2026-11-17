@@ -449,6 +449,50 @@
   }
  },
  {
+  "name": "find_sources",
+  "description": "THE citation tool: one query across several databases (default cinahl, pubmed, cochrane; also psycinfo, wos), deduplicated by DOI, each hit with an APA 7 reference built from the publisher's own DOI metadata. Use this for 'find me sources on X'.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "query": {
+     "type": "string"
+    },
+    "databases": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     }
+    },
+    "limit": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "query"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "apa",
+  "description": "APA 7 reference for a DOI, from the DOI registry (not from scraped pages). lang='sv' for svensk APA wording.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "doi": {
+     "type": "string"
+    },
+    "lang": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "doi"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "pubmed",
   "description": "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
   "inputSchema": {

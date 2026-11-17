@@ -33,8 +33,9 @@ DATABASES = {
                'url': EBSCO + '/c/%s/search/results?db=cin20&q=' % EBSCO_COLLECTION},
     'psycinfo': {'name': 'PsycInfo', 'ebsco': 'psyh',
                  'url': EBSCO + '/c/%s/search/results?db=psyh&q=' % EBSCO_COLLECTION},
-    'cochrane': {'name': 'Cochrane Library', 'url': 'https://www.cochranelibrary.com/advanced-search'},
-    'wos': {'name': 'Web of Science', 'url': 'https://webofknowledge.com/wos'},
+    'cochrane': {'name': 'Cochrane Library', 'reader': 'cochrane',
+                 'url': 'https://www.cochranelibrary.com/cdsr/reviews'},
+    'wos': {'name': 'Web of Science', 'reader': 'wos', 'url': 'https://webofknowledge.com/wos'},
     'jcr': {'name': 'Journal Citation Reports', 'url': 'https://jcr.clarivate.com/jcr/home'},
     'sage': {'name': 'Sage Research Methods', 'url': 'https://methods.sagepub.com/'},
     'nese': {'name': 'Nationalencyklopedin', 'url': 'https://www.ne.se/'},
@@ -239,6 +240,10 @@ def search(database, query, limit=10):
     if key not in DATABASES:
         raise DatabaseError('unknown database %r; known: %s' % (database, ', '.join(sorted(DATABASES))))
     db = DATABASES[key]
+    if db.get('reader') == 'cochrane':
+        return _search_cochrane(query, limit)
+    if db.get('reader') == 'wos':
+        return _search_wos(query, limit)
     if not db.get('ebsco'):
         raise DatabaseError('%s has no structured search here; open it with open_database()'
                             % db['name'])
@@ -348,7 +353,142 @@ def open_database(database):
 def catalogue():
     """The databases the school lists, with what each is good for."""
     return [
-        {'key': k, 'name': v['name'], 'searchable': bool(v.get('ebsco')),
+        {'key': k, 'name': v['name'], 'searchable': bool(v.get('ebsco') or v.get('reader')),
          'behind_ezproxy': True}
         for k, v in DATABASES.items()
     ]
+
+
+# ---- Cochrane Library -------------------------------------------------------------------
+# The URL parameters on /search are ignored unless the session came from the form, and Enter
+# in the box does nothing: set the value through the native setter, then click .searchByBtn.
+COCHRANE = 'https://www-cochranelibrary-com.shh.idm.oclc.org'
+
+COCHRANE_JS = r"""(() => {
+  const b = document.body.innerText;
+  const total = ((b.match(/(\d[\d,]*)\s*\n?\s*Cochrane Reviews/) || [])[1] || '').replace(/,/g, '');
+  return JSON.stringify({total: total, url: location.href, items:
+    [...document.querySelectorAll('.search-results-item')].map(e => {
+      const a = e.querySelector('a[href*="/cdsr/doi/"]');
+      const lines = e.innerText.split('\n').map(s => s.trim()).filter(Boolean);
+      return {title: a ? a.innerText.trim() : '', href: a ? a.getAttribute('href') : '', lines: lines};
+    })});
+})()"""
+
+
+def _search_cochrane(query, limit):
+    with _Tab(COCHRANE + '/cdsr/reviews') as page:
+        for _ in range(12):                      # the search box is rendered late
+            page._run(asyncio.sleep(2))
+            try:
+                if page.eval("!!document.querySelector('#searchText') && !!document.querySelector('.searchByBtn')"):
+                    break
+            except DatabaseError:
+                continue
+        _check_session(page)
+        done = page.eval("""(q => {
+          const i = document.querySelector('#searchText');
+          if (!i) return 'no box';
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(i, q);
+          i.dispatchEvent(new Event('input', {bubbles: true}));
+          i.dispatchEvent(new Event('change', {bubbles: true}));
+          const b = document.querySelector('.searchByBtn');
+          if (!b) return 'no button';
+          b.click(); return 'ok';
+        })(%s)""" % json.dumps(query))
+        if done != 'ok':
+            raise DatabaseError('Cochrane search form changed: %s' % done)
+        raw = {}
+        for _ in range(8):
+            page._run(asyncio.sleep(3))
+            try:
+                raw = json.loads(page.eval(COCHRANE_JS) or '{}')
+            except DatabaseError:
+                continue
+            if raw.get('url', '').rstrip('/').endswith('/search') and raw.get('items') is not None:
+                break
+    out = []
+    for it in (raw.get('items') or [])[:max(limit, 25)]:
+        m = re.search(r'/cdsr/doi/(10\.[^/]+/[^/]+)/', it.get('href') or '')
+        doi = m.group(1) if m else ''
+        lines = [l for l in it.get('lines') or [] if not re.fullmatch(r'\d+', l)]
+        title = it.get('title') or (lines[0] if lines else '')
+        rest = [l for l in lines if l != title]
+        authors = [a.strip() for a in (rest[0] if rest else '').split(',') if a.strip()]
+        date = next((l for l in rest if re.search(r'\b(19|20)\d{2}\b', l)), '')
+        kind = next((l for l in rest if re.search(r'Intervention|Diagnostic|Prognosis|Overview|Methodology|Qualitative', l)), '')
+        out.append({
+            'title': title, 'authors': authors, 'journal': 'Cochrane Database of Systematic Reviews',
+            'year': (re.search(r'(19|20)\d{2}', date) or [''])[0] if date else '',
+            'review_type': kind, 'doi': doi, 'peer_reviewed': True, 'full_text': True,
+            'url': COCHRANE + (it.get('href') or ''), 'database': 'Cochrane Library',
+        })
+    return {'database': 'Cochrane Library', 'query': query, 'total': raw.get('total', ''),
+            'results': out}
+
+
+# ---- Web of Science ---------------------------------------------------------------------
+# The summary page takes the query as JSON in the URL (`queryJson`), which skips the Angular
+# search form entirely. Records are <app-record>; the card has no DOI, so ask Crossref by
+# title when a DOI is needed (doi_for_title).
+WOS = 'https://www-webofscience-com.shh.idm.oclc.org'
+
+WOS_JS = r"""(() => {
+  const b = document.body.innerText;
+  return JSON.stringify({
+    total: ((b.match(/([\d,]+)\s+results/) || [])[1] || '').replace(/,/g, ''),
+    records: [...document.querySelectorAll('app-record')].map(r => {
+      const a = r.querySelector('a[data-ta="summary-record-title-link"]');
+      const cites = r.querySelector('a[data-ta="stat-number-citation-related-count"]');
+      return {
+        title: a ? a.innerText.trim() : '',
+        href: a ? a.getAttribute('href') : '',
+        authors: [...r.querySelectorAll('a[data-ta*="DisplayName-author"]')].map(x => x.innerText.trim()),
+        lines: r.innerText.split('\n').map(s => s.trim()).filter(Boolean),
+        cited_by: cites ? cites.innerText.trim() : '',
+      };
+    })});
+})()"""
+
+
+def _search_wos(query, limit, field='TS'):
+    import urllib.parse
+    qj = json.dumps([{'rowBoolean': None, 'rowField': field, 'rowText': query}])
+    url = WOS + '/wos/woscc/general-summary?queryJson=' + urllib.parse.quote(qj)
+    raw = {}
+    with _Tab(url) as page:
+        for _ in range(10):
+            page._run(asyncio.sleep(4))
+            try:
+                raw = json.loads(page.eval(WOS_JS) or '{}')
+            except DatabaseError:
+                continue
+            if raw.get('records'):
+                break
+            _check_session(page)
+            if re.search(r'Your search found no results|0 results', page.text()):
+                break
+    out = []
+    for r in (raw.get('records') or [])[:limit]:
+        lines = r.get('lines') or []
+        title = r.get('title', '')
+        i = lines.index(title) if title in lines else 1
+        tail = lines[i + 1:]
+        date = next((l for l in tail if re.fullmatch(r'(?:[A-Z][a-z]{2}\s+)?(?:\d{1,2}\s+)?(19|20)\d{2}', l)), '')
+        journal = next((re.sub(r'arrow_drop_down$', '', l).strip() for l in tail
+                        if l.endswith('arrow_drop_down')), '')
+        vol = next((l for l in tail if re.match(r'^\d+(\(\w+\))?(,\s*pp?\.)?', l) and len(l) < 40), '')
+        m = re.match(r'^(\d+)(?:\(([^)]+)\))?(?:,\s*pp?\.\s*([\w\-–]+))?', vol)
+        authors = r.get('authors') or []
+        if not authors and len(tail) > 0:
+            authors = [a.strip() for a in re.split(r';|\band\b', tail[0]) if a.strip()]
+        out.append({
+            'title': title, 'authors': authors, 'journal': journal.title() if journal.isupper() else journal,
+            'year': (re.search(r'(19|20)\d{2}', date) or [''])[0] if date else '',
+            'volume': m.group(1) if m else '', 'issue': (m.group(2) or '') if m else '',
+            'pages': (m.group(3) or '') if m else '', 'cited_by': r.get('cited_by', ''),
+            'free_full_text': any('Free Full Text' in l for l in lines),
+            'url': WOS + (r.get('href') or ''), 'database': 'Web of Science',
+        })
+    return {'database': 'Web of Science', 'query': query, 'total': raw.get('total', ''),
+            'results': out}

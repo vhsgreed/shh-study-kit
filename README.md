@@ -21,7 +21,10 @@ Then ask your agent "what is due this week?" and let it work.
   `--proxy-server=http://127.0.0.1:8118`, where [`scripts/apify_chain_proxy.py`](scripts/apify_chain_proxy.py)
   chains to a residential proxy (password from `~/.secrets/APIFY_PROXY_PASSWORD`). Loans need
   `~/.secrets/KOHA_USER` and `~/.secrets/KOHA_PIN`.
-- **Databases (CINAHL, PsycInfo):** `db_search`, `db_detail`, `db_status`, `db_open`, `db_list`
+- **Ask for sources in plain words.** "Find three peer-reviewed sources on delirium prevention,
+  with APA references" becomes `find_sources`: one query over CINAHL, PubMed and Cochrane,
+  deduplicated by DOI, every hit with an APA 7 reference from the publisher's own metadata.
+- **Databases (CINAHL, PsycInfo, Cochrane, Web of Science):** `db_search`, `db_detail`, `db_status`, `db_open`, `db_list`
   go through the school's OCLC EZproxy (`shh.idm.oclc.org`), which hands the visitor to the
   Microsoft Entra tenant. One sign-in with "stay signed in" in the agent browser is enough
   for weeks of searches afterwards; `db_status` says whether that session still holds, and
@@ -50,6 +53,7 @@ Then ask your agent "what is due this week?" and let it work.
 | `pubmed`, `libris` | NCBI E-utilities, Libris | none |
 | `db_search`, `db_detail`, `db_list`, `db_status`, `db_open` | EBSCOhost (CINAHL, PsycInfo) via EZproxy | school Entra session |
 | `db_fulltext` | publisher sites via EZproxy (Wiley, Elsevier, Cochrane, ...) | school Entra session |
+| `find_sources`, `apa` | CINAHL + PubMed + Cochrane (+ PsycInfo, WoS), APA from doi.org | school Entra session (PubMed: none) |
 
 All tested live against SHH on 2026-11-15: 3 Canvas courses mirrored, 21 of 21 programme
 courses mapped with kursplan and litteraturlista, MCP handshake and tool calls verified.

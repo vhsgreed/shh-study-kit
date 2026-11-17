@@ -384,12 +384,33 @@ def db_fulltext(doi, text=True):
     return fulltext.fetch(doi, text=True if text is None else bool(text))
 
 
+@tool("find_sources",
+      "THE citation tool: one query across several databases (default cinahl, pubmed, "
+      "cochrane; also psycinfo, wos), deduplicated by DOI, each hit with an APA 7 reference "
+      "built from the publisher's own DOI metadata. Use this for 'find me sources on X'.",
+      {"query": S, "databases": {"type": "array", "items": S}, "limit": I}, ["query"])
+def find_sources(query, databases=None, limit=5):
+    from . import citation
+    return citation.find_sources(query, tuple(databases or ("cinahl", "pubmed", "cochrane")),
+                                 limit=limit or 5)
+
+
+@tool("apa",
+      "APA 7 reference for a DOI, from the DOI registry (not from scraped pages). lang='sv' "
+      "for svensk APA wording.",
+      {"doi": S, "lang": S}, ["doi"])
+def apa(doi, lang="en"):
+    from . import citation
+    return {"doi": citation.clean_doi(doi), "apa": citation.apa(doi, lang or "en")}
+
+
 @tool("pubmed", "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
       {"query": S, "max": I}, ["query"])
 def pubmed(query, max=10):
     import urllib.parse
     E = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
-    q = urllib.parse.urlencode({"db": "pubmed", "term": query, "retmax": max, "retmode": "json"})
+    q = urllib.parse.urlencode({"db": "pubmed", "term": query, "retmax": max, "retmode": "json",
+                                "sort": "relevance"})   # E-utilities default is newest first
     with urllib.request.urlopen(E + "esearch.fcgi?" + q, timeout=30) as r:
         ids = json.load(r)["esearchresult"]["idlist"]
     if not ids:

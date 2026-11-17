@@ -1,12 +1,12 @@
 ---
 name: unitoolkit
-description: "Use when an agent must read a student's Canvas, SharePoint, Ladok or TimeEdit."
-version: 0.2.0
+description: "Use when an agent must read a student's Canvas, Ladok, library or databases."
+version: 0.3.0
 author: vhsgreed
 license: MIT
 metadata:
   hermes:
-    tags: [canvas, instructure, ladok, sharepoint, timeedit, pubmed, libris, student, sso, mcp]
+    tags: [canvas, instructure, ladok, sharepoint, timeedit, pubmed, libris, cinahl, cochrane, web-of-science, apa, citations, ezproxy, koha, student, sso, mcp]
 ---
 
 # unitoolkit
@@ -19,6 +19,9 @@ Canvas school (`CANVAS_BASE`).
 - "What is due?", "what does assignment X ask?", "mirror my course", "get the kursplan".
 - A page sits behind school SSO (SharePoint, Ladok, Inspera) and the student runs the
   agent browser.
+- "Find me sources on X", "give me the APA reference", "get me the full text": see
+  **Sources and citations** below.
+- "Is the book on the shelf", "what have I borrowed, when is it due": the `koha_*` tools.
 - Verifying a reference: PubMed for articles, Libris for Swedish books and ISBNs.
 - Skip for public pages you can fetch directly.
 
@@ -48,6 +51,39 @@ the schemas. CLI: `python -m unitoolkit <tool> k=v ...`, JSON on stdout.
 | `pubmed query= max=` | none | PMID, title, journal, year, DOI, authors |
 | `libris query= max=` | none | title, author, year, publisher, ISBN |
 
+## Sources and citations (the usual student request)
+One sign-in covers all of it: the school's EZproxy (`shh.idm.oclc.org`) hands over to the
+Microsoft Entra session in the agent browser, and then every subscribed database admits the
+agent silently. Run `db_status` first; if it says `authenticated: false`, ask the human to
+sign in once, do not try to log in.
+
+1. `find_sources query="..."` searches CINAHL, PubMed and Cochrane at once (add `psycinfo`,
+   `wos` with `databases=[...]`), dedupes by DOI, and returns each hit with an **APA 7
+   reference built from the publisher's DOI metadata** plus a `relevance` score.
+2. Read before citing: `db_detail url=<record url>` gives the abstract; `db_fulltext doi=...`
+   saves the PDF and returns its text when the school subscribes.
+3. `apa doi=...` for a single reference; `lang=sv` for svensk APA wording.
+
+| Tool | Returns |
+|---|---|
+| `find_sources query= databases= limit=` | deduped hits across databases, each with `apa`, `doi`, `relevance`, `database`, `also_in` |
+| `db_search database= query= limit=` | one database: cinahl, psycinfo, cochrane, wos. Citation fields + record URL |
+| `db_detail url=` | abstract, DOI, authors, source line of one record |
+| `db_fulltext doi=` | PDF saved under `~/.local/share/unitoolkit/fulltext`, page count, text |
+| `apa doi= lang=` | APA 7 reference string |
+| `db_status database=` / `db_open database=` / `db_list` | session check / open a database in the browser / what exists |
+| `koha_search q=` / `koha_item biblionumber=` / `koha_loans` | library catalogue, copies on the shelf, own loans with due dates |
+
+Rules for this part:
+- Never present a source the student has not seen as read. Give the abstract or full text and
+  let the student decide; an APA line is not evidence the article says what you claim.
+- APA from the registry keeps the publisher's title case; APA 7 wants sentence case for article
+  titles. Point it out, do not lowercase by rule (acronyms and proper nouns break).
+- `db_fulltext` is capped at 20 downloads an hour. Do not work around it: publishers block the
+  whole school's proxy for bulk downloading.
+- "No subscription route" (e.g. De Gruyter) means order it through the library (fjärrlån), and
+  an open-access copy, when one exists, is returned in the error.
+
 ## Setup (the human does this once)
 1. Canvas: Account > Settings > New access token -> `~/.secrets/CANVAS_TOKEN` (0600).
    Note the expiry date; tokens die silently.
@@ -58,7 +94,9 @@ the schemas. CLI: `python -m unitoolkit <tool> k=v ...`, JSON on stdout.
 ## Rules
 - Read only. Never submit, post, enrol, or change settings unless the human asks for that
   exact action.
-- Never automate the SSO login. If `login_check` says false, ask the human to log in.
+- Never type a password. If `login_check` or `db_status` says false, ask the human to sign in
+  once in the agent browser. (Ladok re-login in `vendor/ladok-vakt` is opt-in and uses Chrome's
+  own saved-password autofill only.)
 - Canvas `due_utc` is an upload cutoff in UTC, not a session time. Convert to local time;
   session times come from TimeEdit.
 - `submitted: true` means a submission exists, not that it passed.
@@ -78,7 +116,30 @@ the schemas. CLI: `python -m unitoolkit <tool> k=v ...`, JSON on stdout.
   `download.aspx?share=<docid>` work.
 - A TimeEdit link covers only the window it was made for; date-range parameters on a
   saved link return nothing. Ask for a new link for a new period.
-- The SHH library host (`biblioteket.shh.se`) may be unreachable from off-campus networks.
+- The SHH library host (`biblioteket.shh.se`) drops port 443 from some home IPs and answers
+  plain HTTP clients with Cloudflare 429. Only a real browser behind a proxy reads it, and the
+  proxy exit must be **sticky**: Koha binds the session to the client IP ("You are logging from
+  a different IP address"), so a rotating proxy fails every login.
+- Koha's login form needs `login_op=cud-login`, a CSRF token from a non-cached page load, and the
+  card number (personnummer) + 4-digit pinkod, not the SSO account. Its loans table is
+  `#checkoutst` (Koha 26), not `#checkouts_table`.
+- EBSCO (CINAHL, PsycInfo) reads a space-separated URL query as **one phrase**: "delirium older
+  adults" returned 1 hit, the same words with AND returned 403. `db_search` joins bare words with
+  AND; quotes and explicit operators pass through.
+- EBSCO result cards: the source line can sit on the authors' line (`By:...In:Journal, 2025`),
+  and an ISSN in brackets reads like a year. Parse `In:` out first, strip the ISSN.
+- Cochrane ignores Enter in its search box and the URL parameters on `/search`: set the value
+  with the native setter, then click `.searchByBtn`. Its default order puts off-topic reviews
+  first for multi-word queries, hence the `relevance` score.
+- Web of Science takes the query as JSON in the URL (`general-summary?queryJson=...`), which
+  skips the Angular form. Its cards carry no DOI; `find_sources` asks Crossref by title and
+  only keeps a match with >= 80% word overlap.
+- Some DOI redirects break through EZproxy (Cochrane lands on a Chrome error page). Resolve the
+  DOI outside the proxy, then proxy the publisher URL.
+- Publishers answer a script `fetch()` of a PDF with a viewer or a bot check; capture the PDF at
+  the network layer (CDP `Fetch` interception) on a top-level navigation instead.
+- Crossref throttles bursts with 429. Send a `mailto` in the User-Agent (polite pool) and back
+  off; one throttled lookup must not sink a multi-database search.
 - Canvas files are behind viewer chrome: `?wrap=1`, `?module_item_id=`, `folder?preview=<id>`.
   Strip to `/files/<id>` and the API serves the file itself.
 - Assignments need `include[]=rubric`: without it Canvas returns `rubric: []` and the grading
