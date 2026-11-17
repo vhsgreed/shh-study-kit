@@ -263,6 +263,22 @@ def _secret(name):
     return value or None
 
 
+def credentials():
+    """(userid, pin) from ~/.secrets/KOHA_CREDENTIALS (two lines: personnummer, pin).
+
+    Falls back to the separate KOHA_USER / KOHA_PIN files. Never printed, never logged,
+    and only ever posted to the library's own login form.
+    """
+    path = Path(os.environ.get('KOHA_CREDENTIALS_FILE',
+                               str(Path.home() / '.secrets' / 'KOHA_CREDENTIALS')))
+    if path.exists():
+        lines = [ln.strip() for ln in path.read_text().splitlines() if ln.strip()]
+        if len(lines) >= 2:
+            return lines[0], lines[1]
+    user, pin = _secret('KOHA_USER'), _secret('KOHA_PIN')
+    return (user, pin) if user and pin else (None, None)
+
+
 LOGIN_JS = r"""(function(user, pin){
   var f = document.querySelector('#modalAuth') || document.querySelector('form[action*="opac-user"]');
   if (!f) return 'no form';
@@ -428,6 +444,51 @@ def login_sso(timeout=60):
         raise KohaError('SSO login did not finish in %ds (autofill empty, 2FA, or slow IdP)' % timeout)
 
 
+# The library's "Log in using your SHH account" goes to Shibboleth, which hands off to
+# Microsoft Entra (login.microsoftonline.com), not to a Shibboleth IdP form. Its login is
+# a two-step wizard: e-mail/username, then password, then "stay signed in".
+ENTRA_JS = r"""JSON.stringify({
+  host: location.host, path: location.pathname,
+  step: (function(){
+    if (document.querySelector('#i0118')) return 'password';
+    if (document.querySelector('#i0116, input[name=loginfmt]')) return 'user';
+    if (document.querySelector('#idBtn_Back, #idSIButton9')) return 'staysignedin';
+    return 'other';
+  })(),
+  filled: ['#i0116','input[name=loginfmt]','#i0118'].some(function(s){
+     var e = document.querySelector(s); return !!e && e.matches(':-webkit-autofill'); }),
+  error: ((document.querySelector('#usernameError, #passwordError, .alert-error') || {}).innerText || '').slice(0,200),
+  logged_in: !!document.querySelector('#checkouts_table, #user_summary')
+})"""
+
+
+def _advance_entra(p, timeout=90):
+    """Walk the Entra wizard, clicking only when Chrome has autofilled the field."""
+    clicked = set()
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        time.sleep(1.5)
+        try:
+            st = json.loads(p.eval(ENTRA_JS) or '{}')
+        except Exception:
+            continue
+        if st.get('host') == 'biblioteket.shh.se':
+            if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+                return 'ok'
+            return 'back'
+        if st.get('error'):
+            raise KohaError('Microsoft login error: %s' % st['error'])
+        step = st.get('step')
+        if step in ('user', 'password') and st.get('filled') and step not in clicked:
+            sel = '#i0116' if step == 'user' else '#i0118'
+            if _click(p, sel) and _click(p, '#idSIButton9'):
+                clicked.add(step)
+        elif step == 'staysignedin' and 'stay' not in clicked:
+            if _click(p, '#idBtn_Back') or _click(p, '#idSIButton9'):
+                clicked.add('stay')
+    return 'timeout'
+
+
 def wait_for_login(timeout=300):
     """Wait until the library account page shows a signed-in session.
 
@@ -477,21 +538,32 @@ def loans(user=None, pin=None, timeout=60):
             else:
                 raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
             if not raw.get('logged_in'):
-                user = user or _secret('KOHA_USER')
-                pin = pin or _secret('KOHA_PIN')
+                if not (user and pin):
+                    user, pin = credentials()
+                # The SSO attempt may have left us on another host: come back to the
+                # account page before using the library's own form.
+                p.goto(USER, marker="!!document.querySelector('#modalAuth, #checkouts_table')")
                 if not user or not pin:
                     raise KohaError('could not sign in through the SHH account, and no '
-                                    '~/.secrets/KOHA_USER + KOHA_PIN to fall back on')
+                                    'credentials in ~/.secrets/KOHA_CREDENTIALS to fall back on')
                 state = p.eval(LOGIN_JS % (json.dumps(user), json.dumps(pin)))
                 if state != 'submitted':
                     raise KohaError('could not find the library login form (%s)' % state)
-                for _ in range(20):
+                for _ in range(12):
                     time.sleep(1)
                     raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
                     if raw.get('logged_in'):
                         break
+                    # A rejected login re-renders the form; stop as soon as Koha says why
+                    # instead of waiting out the timeout with a vague message.
+                    if raw.get('message') and raw.get('login_form') and p.eval(
+                            "!document.querySelector('.modal.show, #modalAuth.show')"):
+                        break
                 if not raw.get('logged_in'):
-                    raise KohaError('login refused: %s' % (raw.get('message') or 'unknown reason')[:160])
+                    why = (raw.get('message') or '').strip()
+                    raise KohaError('login refused%s' % (': ' + why[:160] if why
+                                    else ' (the form came back without an error text, '
+                                         'so the userid or pin is likely wrong)'))
         out = _normalise_account(raw)
         out['user'] = (raw.get('user') or '').strip()[:200]
         return out
