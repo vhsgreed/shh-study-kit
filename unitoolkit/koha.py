@@ -288,6 +288,8 @@ LOGIN_JS = r"""(function(user, pin){
   u.value = user; s.value = pin;
   var ctx = f.querySelector('input[name=koha_login_context]');
   if (ctx) ctx.value = 'opac';
+  var op = f.querySelector('input[name=login_op]');
+  if (op && !op.value) op.value = 'cud-login';   # Koha ignores the POST without it
   if (f.requestSubmit) f.requestSubmit(); else f.submit();
   return 'submitted';
 })(%s, %s)"""
