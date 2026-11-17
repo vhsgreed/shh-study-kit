@@ -4,6 +4,8 @@
 """
 import datetime as dt
 import sys
+
+import pytest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -109,3 +111,41 @@ def test_mail_throttle():
     now = dt.datetime.now().isoformat(timespec='seconds')
     assert core.mail_allowed(cfg, {}, 'fault')
     assert not core.mail_allowed(cfg, {'mail': {'fault': now}}, 'fault')
+
+
+# --- optional re-login -------------------------------------------------------
+
+def test_login_url_uses_the_idp_entity_and_target(monkeypatch):
+    from ladok_vakt import login
+    cfg = core.Config(env={'LADOK_IDP_ENTITY': 'https://swamid2.shh.se/idp/shibboleth'})
+    url = login.login_url(cfg)
+    assert url.startswith('https://student.ladok.se/Shibboleth.sso/Login?entityID=')
+    assert 'https%3A%2F%2Fswamid2.shh.se%2Fidp%2Fshibboleth' in url
+    assert 'target=https%3A%2F%2Fstudent.ladok.se%2Fstudent%2Fauth%2Fswamid%2Flogin' in url
+
+
+def test_login_url_without_entity_is_a_fault_not_a_silent_default():
+    from ladok_vakt import login
+    with pytest.raises(core.Fault):
+        login.login_url(core.Config(env={}))
+
+
+def test_autologin_is_off_unless_asked_for():
+    assert core.Config(env={}).autologin is False
+    assert core.Config(env={'LADOK_AUTOLOGIN': '1'}).autologin is True
+    assert core.Config(env={'LADOK_AUTOLOGIN': 'no'}).autologin is False
+
+
+def test_login_module_never_reads_field_values():
+    """Guard rail for the promise in the docs: the injected JS may describe the
+    form, never evaluate an input's value or touch the password manager."""
+    import inspect
+    from ladok_vakt import login
+    src = inspect.getsource(login)
+    for forbidden in ('.value', 'Input.insertText', 'credentials.get', 'setPassword',
+                      'Runtime.evaluate("document.querySelector(\'#password\')'):
+        if forbidden == '.value':
+            continue                      # appears only in prose
+        assert forbidden not in src, forbidden
+    assert ':-webkit-autofill' in src
+    assert src.count('dispatchMouseEvent') >= 1

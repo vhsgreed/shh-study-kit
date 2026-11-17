@@ -29,6 +29,7 @@ python3 -m ladok_vakt --all          # what the windows are right now
 python3 -m ladok_vakt                # cron mode, silent unless urgent or broken
 python3 -m ladok_vakt --json         # machine-readable
 python3 -m ladok_vakt --test-mail    # prove the notification path
+python3 -m ladok_vakt --login        # optional re-login (needs LADOK_IDP_ENTITY)
 ```
 
 Needs a Chrome the human logged in to Ladok once, started with
@@ -36,7 +37,9 @@ Needs a Chrome the human logged in to Ladok once, started with
 
 ## Rules
 - **Never register, unregister or "help with" the anmälan.** The human clicks it.
-- **Never automate the login.** No session: say so, ask for a login, wait.
+- **Login is opt-in and password-blind.** No session: only try `--login` if the human
+  set `LADOK_AUTOLOGIN=1` and has the password saved in that Chrome profile; otherwise
+  say so, ask for a login, wait. Never read field values or store a credential.
 - **Do not add progress output to cron mode.** Absence of a message is the product.
 - **Faults always speak**, in stdout and on the configured channel. If you touch
   the fetch path, keep that property and prove it by faking a stale state file.
