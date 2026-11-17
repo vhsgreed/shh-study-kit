@@ -326,6 +326,20 @@
   }
  },
  {
+  "name": "koha_wait_login",
+  "description": "Wait until the library account page shows a signed-in session, for the one-time manual sign-in in the proxied Chrome window. After that koha_loans needs no credentials.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "timeout": {
+     "type": "integer"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "koha_status",
   "description": "Diagnostics for the Koha path: whether the proxied browser and the local chain proxy are up, and whether library credentials are on file.",
   "inputSchema": {

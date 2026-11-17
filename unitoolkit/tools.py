@@ -287,6 +287,15 @@ def koha_loans():
     return koha.loans()
 
 
+@tool("koha_wait_login",
+      "Wait until the library account page shows a signed-in session, for the one-time manual "
+      "sign-in in the proxied Chrome window. After that koha_loans needs no credentials.",
+      {"timeout": I})
+def koha_wait_login(timeout=300):
+    from . import koha
+    return {"result": koha.wait_for_login(timeout=timeout or 300)}
+
+
 @tool("koha_status",
       "Diagnostics for the Koha path: whether the proxied browser and the local chain proxy are "
       "up, and whether library credentials are on file.",

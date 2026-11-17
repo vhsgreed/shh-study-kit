@@ -12,6 +12,7 @@ school-helper profile). Read-only: search, item availability, your own loans.
 import asyncio
 import json
 import os
+import re
 import socket
 import subprocess
 import time
@@ -262,38 +263,238 @@ def _secret(name):
     return value or None
 
 
-def loans():
-    """Requires ~/.secrets/KOHA_USER and ~/.secrets/KOHA_PIN (you create them)."""
-    user, pin = _secret('KOHA_USER'), _secret('KOHA_PIN')
-    if not user or not pin:
-        raise KohaError('no credentials: create ~/.secrets/KOHA_USER and ~/.secrets/KOHA_PIN '
-                        '(chmod 600). They are read from disk and never printed.')
+LOGIN_JS = r"""(function(user, pin){
+  var f = document.querySelector('#modalAuth') || document.querySelector('form[action*="opac-user"]');
+  if (!f) return 'no form';
+  var u = f.querySelector('input[name=login_userid], #userid, input[name=userid]');
+  var s = f.querySelector('input[name=login_password], #password, input[name=password]');
+  if (!u || !s) return 'no fields';
+  u.value = user; s.value = pin;
+  var ctx = f.querySelector('input[name=koha_login_context]');
+  if (ctx) ctx.value = 'opac';
+  if (f.requestSubmit) f.requestSubmit(); else f.submit();
+  return 'submitted';
+})(%s, %s)"""
+
+# Tolerant scrape: keep the raw cells, then derive the fields people ask about.
+ACCOUNT_JS = r"""(function(){
+  function table(sel){
+    var t = document.querySelector(sel);
+    if (!t) return null;
+    var rows = [];
+    t.querySelectorAll('tr').forEach(function(r){
+      var cells = [...r.querySelectorAll('td,th')].map(function(c){
+        return c.innerText.replace(/\s+/g,' ').trim(); });
+      if (cells.join('').trim()) rows.push(cells);
+    });
+    return rows;
+  }
+  function firstLink(sel){
+    var t = document.querySelector(sel);
+    if (!t) return null;
+    var a = t.querySelector('a[href*="opac-detail"]');
+    return a ? a.innerText.replace(/\s+/g,' ').trim() : null;
+  }
+  var body = document.body.innerText;
+  return JSON.stringify({
+    logged_in: !!document.querySelector('#checkouts_table, #user_summary, #opac-user-views, .loggedinusername'),
+    user: (document.querySelector('#user_summary, .loggedinusername, .user-info') || {}).innerText || '',
+    checkouts: table('#checkouts_table'),
+    holds: table('#holdst') || table('#reservest'),
+    fines: table('#fines_table') || table('#finest'),
+    overdues: table('#overdues_table'),
+    message: ((document.querySelector('.alert, .dialog.alert, #login_error') || {}).innerText || '').trim().slice(0, 300),
+    login_form: !!document.querySelector('#modalAuth input[name=login_userid]'),
+    titles: {checkout_first: firstLink('#checkouts_table'), hold_first: firstLink('#holdst')}
+  });
+})()"""
+
+_DATE = re.compile(r'(\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4})')
+
+
+def _secret(name):
+    path = Path.home() / '.secrets' / name
+    if not path.exists():
+        return None
+    value = path.read_text().strip()
+    return value or None
+
+
+def _normalise_account(raw):
+    """Rows come back as table cells; name the columns people actually ask for."""
+    def rows_of(key):
+        return raw.get(key) or []
+
+    checkouts = []
+    for cells in rows_of('checkouts'):
+        joined = ' | '.join(cells)
+        if re.fullmatch(r'(?i)(titel|title|due|förfaller|\W)+', joined):
+            continue                                   # header row
+        dates = _DATE.findall(joined)
+        checkouts.append({
+            'cells': cells,
+            'title': cells[1] if len(cells) > 1 else (cells[0] if cells else ''),
+            'due': dates[-1] if dates else '',
+        })
+    holds = []
+    for cells in rows_of('holds'):
+        joined = ' | '.join(cells)
+        if re.fullmatch(r'(?i)(titel|title|\W)+', joined):
+            continue
+        nums = [c for c in cells if c.strip().isdigit()]
+        holds.append({
+            'cells': cells,
+            'title': cells[0] if cells else '',
+            'queue_position': int(nums[-1]) if nums else None,
+        })
+    return {
+        'logged_in': raw.get('logged_in'),
+        'checkouts': checkouts,
+        'checkouts_count': len(checkouts),
+        'holds': holds,
+        'holds_count': len(holds),
+        'fines': rows_of('fines'),
+        'overdues': rows_of('overdues'),
+        'message': raw.get('message', ''),
+    }
+
+
+SHIB_LOGIN = BASE + ('/Shibboleth.sso/Login?target=https%3A%2F%2Fbiblioteket.shh.se'
+                        '%2Fcgi-bin%2Fkoha%2Fopac-main.pl')
+
+SSO_STATE_JS = r"""JSON.stringify({
+  host: location.host, path: location.pathname,
+  form: !!document.querySelector('#username') && !!document.querySelector('#password'),
+  filled: ['#username','#password'].every(function(s){ var e = document.querySelector(s);
+     return !!e && e.matches(':-webkit-autofill'); }),
+  submit: !!document.querySelector('button[name=_eventId_proceed], input[name=_eventId_proceed]'),
+  logged_in: !!document.querySelector('#checkouts_table, #user_summary'),
+  error: ((document.querySelector('.form-error, .output--failure, .alert-danger') || {}).innerText || '').slice(0,200)
+})"""
+
+CLICK_JS = r"""(function(sel){
+  var b = document.querySelector(sel);
+  if (!b) return null;
+  b.scrollIntoView({block:'center'});
+  var r = b.getBoundingClientRect();
+  return JSON.stringify({x: r.left + r.width/2, y: r.top + r.height/2});
+})(%s)"""
+
+
+def _click(p, selector):
+    """Real mouse click: Chrome only releases autofilled values after a user gesture."""
+    xy = p.eval(CLICK_JS % json.dumps(selector))
+    if not xy:
+        return False
+    xy = json.loads(xy)
+    p.loop.run_until_complete(p.call('Input.dispatchMouseEvent',
+        {'type': 'mousePressed', 'x': xy['x'], 'y': xy['y'], 'button': 'left', 'clickCount': 1}))
+    p.loop.run_until_complete(p.call('Input.dispatchMouseEvent',
+        {'type': 'mouseReleased', 'x': xy['x'], 'y': xy['y'], 'button': 'left', 'clickCount': 1}))
+    return True
+
+
+def login_sso(timeout=60):
+    """Sign in to Koha through the SHH account (SWAMID), using Chrome's saved password.
+
+    The library has no separate password: "Log in using your SHH account" sends you to
+    Shibboleth, which forwards to the SHH IdP where Chrome already has the login saved.
+    Nothing is read, typed or stored here: the script waits for the autofill and clicks.
+    """
     ensure_browser()
     with _Page() as p:
-        p.goto(USER, marker="document.querySelectorAll('#checkouts_table, #holdst, form[action*=\"opac-user\"]').length > 0")
-        if p.eval("!!document.querySelector('#checkouts_table')"):
-            return json.loads(p.eval(CHECKOUTS_JS) or '{}')
-        filled = p.eval("""(function(){
-          var u = document.querySelector('#login_userid, input[name=login_userid], #userid');
-          var s = document.querySelector('#login_password, input[name=login_password], #password');
-          var form = (u && u.closest('form')) || document.querySelector('form[action*="opac-user"]');
-          if (!u || !s || !form) return 'no form';
-          u.value = %s; s.value = %s;
-          form.querySelectorAll('input[name="koha_login_context"]').forEach(function(i){i.value='opac';});
-          form.submit();
-          return 'submitted';
-        })()""" % (json.dumps(user), json.dumps(pin)))
-        if filled != 'submitted':
-            raise KohaError('could not find the login form on the Koha page')
-        for _ in range(20):
-            time.sleep(1)
-            if p.eval("!!document.querySelector('#checkouts_table')"):
-                return json.loads(p.eval(CHECKOUTS_JS) or '{}')
-            if p.eval("!!document.querySelector('.alert, .error')") and not p.eval(
-                    "!!document.querySelector('#login_userid, input[name=login_userid]')"):
-                break
-        err = p.eval("(document.querySelector('.alert, .error') || {}).innerText || ''")
-        raise KohaError('login did not reach the account page%s' % (': ' + err.strip()[:120] if err else ''))
+        p.goto(USER, marker="!!document.querySelector('#checkouts_table, a[href*=Shibboleth]')")
+        if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+            return 'already in'
+        p.loop.run_until_complete(p.call('Page.navigate', {'url': SHIB_LOGIN}))
+        clicked = False
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            time.sleep(1.5)
+            try:
+                st = json.loads(p.eval(SSO_STATE_JS) or '{}')
+            except Exception:
+                continue
+            if st.get('logged_in'):
+                return 'ok'
+            if st.get('error'):
+                raise KohaError('the SHH IdP refused the login: %s' % st['error'])
+            if st.get('form') and st.get('filled') and not clicked:
+                clicked = _click(p, 'button[name=_eventId_proceed], input[name=_eventId_proceed]')
+            if clicked and st.get('host') == 'biblioteket.shh.se':
+                time.sleep(1.5)
+                if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+                    return 'ok'
+        raise KohaError('SSO login did not finish in %ds (autofill empty, 2FA, or slow IdP)' % timeout)
+
+
+def wait_for_login(timeout=300):
+    """Wait until the library account page shows a signed-in session.
+
+    For the one-time case: the human signs in by hand in the proxied Chrome window
+    ("Log in using your SHH account"), and the profile keeps the session cookie. After
+    that, `loans()` reads the account with no credentials at all.
+    """
+    ensure_browser()
+    deadline = time.time() + timeout
+    with _Page() as p:
+        while time.time() < deadline:
+            p.goto(USER, marker="!!document.querySelector('#checkouts_table, a[href*=Shibboleth], #modalAuth')")
+            if p.eval("!!document.querySelector('#checkouts_table, #user_summary')"):
+                return 'signed in'
+            time.sleep(5)
+    raise KohaError('no signed-in library session after %ds' % timeout)
+
+
+def loans(user=None, pin=None, timeout=60):
+    """Your own Koha account: loans, holds, fines. Read-only.
+
+    Signs in through the SHH account (SWAMID) with Chrome's saved password. If that is not
+    available and ~/.secrets/KOHA_USER + KOHA_PIN exist, the library form is used instead.
+    """
+    ensure_browser()
+    with _Page() as p:
+        p.goto(USER, marker="!!document.querySelector('#modalAuth, #checkouts_table, a[href*=Shibboleth]')")
+        raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
+        if not raw.get('logged_in'):
+            p.loop.run_until_complete(p.call('Page.navigate', {'url': SHIB_LOGIN}))
+            clicked = False
+            deadline = time.time() + timeout
+            while time.time() < deadline:
+                time.sleep(1.5)
+                try:
+                    st = json.loads(p.eval(SSO_STATE_JS) or '{}')
+                except Exception:
+                    continue
+                if st.get('form') and st.get('filled') and not clicked:
+                    clicked = _click(p, 'button[name=_eventId_proceed], input[name=_eventId_proceed]')
+                if st.get('error'):
+                    raise KohaError('the SHH IdP refused the login: %s' % st['error'])
+                if st.get('host') == 'biblioteket.shh.se' or st.get('logged_in'):
+                    raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
+                    if raw.get('logged_in'):
+                        break
+            else:
+                raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
+            if not raw.get('logged_in'):
+                user = user or _secret('KOHA_USER')
+                pin = pin or _secret('KOHA_PIN')
+                if not user or not pin:
+                    raise KohaError('could not sign in through the SHH account, and no '
+                                    '~/.secrets/KOHA_USER + KOHA_PIN to fall back on')
+                state = p.eval(LOGIN_JS % (json.dumps(user), json.dumps(pin)))
+                if state != 'submitted':
+                    raise KohaError('could not find the library login form (%s)' % state)
+                for _ in range(20):
+                    time.sleep(1)
+                    raw = json.loads(p.eval(ACCOUNT_JS) or '{}')
+                    if raw.get('logged_in'):
+                        break
+                if not raw.get('logged_in'):
+                    raise KohaError('login refused: %s' % (raw.get('message') or 'unknown reason')[:160])
+        out = _normalise_account(raw)
+        out['user'] = (raw.get('user') or '').strip()[:200]
+        return out
 
 
 def status():
