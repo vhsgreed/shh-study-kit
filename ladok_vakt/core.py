@@ -94,8 +94,9 @@ def _tab(cdp):
         if t.get('type') == 'page' and 'ladok' in t.get('url', ''):
             return t
     try:
-        return json.load(urllib.request.urlopen(
-            cdp + '/json/new?' + LADOK_ORIGIN + START_PATH, timeout=10))
+        # Chrome 111+ rejects GET /json/new with 405; it must be PUT.
+        return json.load(urllib.request.urlopen(urllib.request.Request(
+            cdp + '/json/new?' + LADOK_ORIGIN + START_PATH, method='PUT'), timeout=10))
     except Exception as exc:
         raise Fault('kan inte öppna en Ladok-flik (%s)' % exc)
 
@@ -118,6 +119,8 @@ async def _fetch_all(cdp, paths):
                 if m.get('id') == i:
                     break
             v = (m.get('result', {}).get('result') or {}).get('value') or ''
+            if not isinstance(v, str):  # evaluate threw: an error object, not text
+                v = ''
             st, _, body = v.partition('|')
             out[p] = (int(st or 0), body)
     return out
