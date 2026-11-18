@@ -100,6 +100,8 @@ export LADOK_AUTOLOGIN=1
 python3 -m ladok_vakt --login   # try it in advance
 ```
 
+The re-login takes your route: *Log in through your university*, picks the institution, and presses Login once Chrome has filled in the saved password. If that fails it tries the direct SWAMID link. The window does not need to be visible, so it works with the screen locked.
+
 The script opens the login via SWAMID, waits until Chrome has filled in the form
 and clicks Login with a real mouse event. It then checks that Ladok answers before
 the login is reported as successful.
@@ -125,6 +127,7 @@ does, the re-login fails and you get a fault alert: the script does not guess.
 | `LADOK_CLOSE_DAYS` | `3` | Alert when the window closes within that many days |
 | `LADOK_AUTOLOGIN` | `0` | Set to `1` to try logging in again with the saved password |
 | `LADOK_IDP_ENTITY` | empty | The institution's SWAMID entityID; required for re-login |
+| `LADOK_IDP_DOMAIN` | from entityID | Domain the institution picker searches for, e.g. `shh.se` |
 | `LADOK_STALE_HOURS` | `36` | Alert when the last successful fetch is older than this |
 | `LADOK_MAIL_MIN_HOURS` | `20` | Minimum time between fault alerts per channel |
 | `LADOK_HEARTBEAT` | `1` | Weekly health check on Mondays; `0` turns it off |
