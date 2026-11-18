@@ -1,0 +1,93 @@
+# unitoolkit: breadth and depth
+
+2026-11-18. Measured on this machine against live systems. Every number below was produced by
+running the tool, not read off a design document. Where something was not verified, it says so.
+
+Code state: 37 registered tools, 4 563 lines in `unitoolkit/*.py`, 86 offline tests in 11 files
+(green), `unitoolkit` 0.7.0. The announcements reader below was added while writing this report,
+after the gap turned up in testing.
+
+## Breadth: eight systems, one server
+
+| System | Reach | Depth today | Last verified |
+|---|---|---|---|
+| **Canvas** | any Canvas school (token) | courses, modules, assignments with rubric, submissions, files, pages (via module items, the index is off at SHH), disk mirror, text extraction with OCR, full-text search over course + documents, endpoint surface probe | 2026-11-18 09:38, token expires 2026-12-14 |
+| **Databases (EZproxy)** | 9 subscription databases + 6 free sources | 4 searchable: CINAHL, PsycInfo, Cochrane, Web of Science. 5 open-only: JCR, Sage Research Methods, Nationalencyklopedin, Författningshandbok, PubMed-via-EZproxy. Full text by DOI where the publisher is proxied | 2026-11-18 09:41 (EZproxy admits as Sophiahemmet) |
+| **Library (Koha)** | catalogue + own account | search, per-copy availability, item detail, loans, holds, fines (Koha 26 table ids) | loans read 2026-11-17 17:00 (6 items). Login failed 2026-11-18 07:53 |
+| **Ladok** | registration windows | windows with days to open/close, 4 live. No results, no ISP, no tillgodoräknande status | 2026-11-18 09:39 (heal 7 s, windows=4) |
+| **TimeEdit** | any course code, group, room | schedule for any period, bookable rooms, free gaps with the booking rules applied | 2026-11-18 09:40 (H26SK, 09:00–12:00 seminar) |
+| **SharePoint** | SHH share links | real file bytes through the logged-in browser | 2026-11-17 |
+| **Citations** | DOI registry | APA 7 from doi.org content negotiation (Crossref, DataCite), English and Swedish | 2026-11-17 |
+| **Agent surface** | MCP, CLI, JSON manifest | 10 core tools by default, 37 with `UNITOOLKIT_TOOLS=all` | 2026-11-18 |
+
+Depth means: how far past "it opens" a reader goes. Four of the nine databases are searchable from
+inside the agent; the other five open correctly but have to be searched by hand, which is the
+honest line between breadth and depth here.
+
+## Depth: what is actually deep
+
+**Canvas is the deepest.** It mirrors a course to disk, extracts text from the PDFs once (with
+OCR for scans), and searches the whole thing locally, so a question about a rubric or a syllabus
+paragraph is answered without another API call. The submission status is live, which is what makes
+`today` trustworthy.
+
+**Full text works where the library is proxied.** Verified on four paywalled articles: Wiley
+(9 pages, 9 pages), Elsevier (11 pages), Cochrane review (188 pages). Captured at the network
+layer on a navigation, not by a script download, because publishers answer the latter with a
+viewer or a bot check. De Gruyter is not proxied and says so. Capped at 20 downloads an hour, a
+licence rule: systematic downloading gets the institution's proxy blocked, which would take the
+databases from every student at the school.
+
+**Searching the databases took the longer work.** EBSCO reads a space-separated URL query as one
+phrase, so bare words are AND-joined. Cochrane ignores Enter and renders its box late, and keeps
+the previous search in the session. Web of Science takes JSON in the URL, which skips the Angular
+form.
+
+**TimeEdit is deeper than the timetable.** A saved guide link is frozen to the week it was made
+for; the reader asks for any period, and `free_rooms` applies the school's own booking rules
+(Mon–Fri 08–20, three days ahead, max four hours) rather than guessing.
+
+**`doctor` is the depth that pays off in maintenance.** Six checks, each failing row carrying the
+human fix, and the Canvas token expiry read from Canvas rather than from a note on disk.
+
+## Depth: where it stops
+
+Ordered by what it costs Karl, not by how hard it is.
+
+1. **Koha login is unreliable, and it is the one thing that needs a human.** It worked at 17:00 on
+   17/11 and failed at 07:53 on 18/11 with the same credentials; stopped after one attempt rather
+   than risk a lockout. Everything else in the kit is unattended; this is not.
+2. **Ladok is windows only.** No results, no certificates, no ISP, no tillgodoräknande. The ISP
+   question (worth 120 hp of credit transfer) cannot be answered by the tool yet.
+3. **Ladok's session does not persist.** Every Ladok and SWAMID cookie is a session cookie
+   (`JSESSIONID`, `_shibsession_*`, `__Host-shib_idp_session`), plus a server-side idle timeout:
+   the session was live at 08:24 and gone at 09:39 with Chrome never restarting. So every
+   unattended run must heal first. That now works (7 s, twice today), but it is a login per run,
+   not a stored session.
+4. **Five databases open but cannot be searched** from the agent. JCR, Sage Research Methods,
+   Nationalencyklopedin and Författningshandbok are the realistic candidates (they have simple
+   search boxes); PubMed-EZproxy is covered by the free E-utilities API instead.
+5. ~~**Canvas announcements have no reader.**~~ Fixed 2026-11-18 while testing for this report:
+   `discussion_topics` without `only_announcements=True` returns an empty list, which is why the
+   first check said "no announcements" when there were 12, newest 2026-11-15. There is now an
+   `announcements` tool (title, body, author, date) and `today` carries the last 14 days.
+   **Discussions proper still have no reader**, and a teacher who posts in a discussion rather
+   than an announcement is still invisible.
+6. **Free sources are wired as constants, not as tools.** DiVA, DOAJ, ERIC and SwePub exist in
+   `databases.FREE` but only PubMed and Libris have callable tools.
+7. **Not on PyPI.** Wheel built and installed into a clean 3.12 venv, but publishing needs a token
+   that does not exist yet.
+8. **The smoke test does not cover the two things that break silently**: the Koha login (deliberate,
+   lockout risk) and the Ladok heal (covered by the daily watcher instead). 10 of 10 readers pass
+   as of 2026-11-18 08:00.
+
+## What I would do next, in order
+
+1. Koha login: find out why the form sometimes refuses, and add a `library` retry policy with a
+   hard attempt cap. Until then, `today` keeps library off by default.
+2. A Canvas discussions reader (announcements are done). The same endpoint without the filter.
+3. Ladok: results and ISP. Results are the same proxy pattern as windows; ISP may not exist as a
+   student endpoint at all, which is itself the answer Karl needs for the course admin.
+4. Readers for Författningshandbok and Nationalencyklopedin: both have plain search boxes and are
+   the two the nursing programme actually cites.
+5. Publish to PyPI once the token exists.

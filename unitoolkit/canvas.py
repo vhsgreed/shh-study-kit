@@ -130,6 +130,32 @@ def mirror(course_id, out, files=True):
             "files_downloaded": n_files, "bytes": n_bytes, "out": str(out)}
 
 
+def announcements(course=None, days=30):
+    """Course announcements, newest first.
+
+    Not `discussion_topics`: without `only_announcements` Canvas leaves the announcements out
+    and the list looks empty, which is how a teacher's post went unnoticed on 2026-11-18.
+    A course's announcements may live on its parent (a section or the account), so both are read.
+    """
+    out = []
+    scope = [course] if course else [c['id'] for c in courses()]
+    for cid in scope:
+        rows = try_get('/courses/%s/discussion_topics' % cid, only_announcements=True,
+                       per_page=50) or []
+        for a in rows:
+            out.append({'id': a.get('id'), 'course_id': cid, 'title': a.get('title'),
+                        'posted_utc': a.get('posted_at') or a.get('delayed_post_at'),
+                        'author': (a.get('author') or {}).get('display_name'),
+                        'url': a.get('html_url'),
+                        'body': (a.get('message') or '')[:2000]})
+    out.sort(key=lambda r: r.get('posted_utc') or '', reverse=True)
+    if days:
+        cut = time.time() - days * 86400
+        out = [a for a in out if not a['posted_utc'] or
+               time.mktime(time.strptime(a['posted_utc'][:19], '%Y-%m-%dT%H:%M:%S')) >= cut]
+    return out
+
+
 def upcoming():
     """Planner items (assignments, quizzes, events) from today, across all courses."""
     return get("planner/items", start_date=time.strftime("%Y-%m-%d"))

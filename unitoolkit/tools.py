@@ -140,6 +140,16 @@ def courses():
              "term": (c.get("term") or {}).get("name")} for c in canvas.courses()]
 
 
+@tool("announcements",
+      "Course announcements, newest first, with body text. Canvas hides these from the plain "
+      "discussion list, so this is the only way to see what a teacher posted.",
+      {"course": {**I, "description": "Canvas course id; omitted: every active course"},
+       "days": {**I, "description": "How far back, default 30"}})
+def announcements(course=None, days=30):
+    from . import canvas
+    return canvas.announcements(course=course, days=days)
+
+
 @tool("upcoming", "Everything due from today across all Canvas courses: title, course, "
       "due (UTC), submitted. Start here for 'what is due?'.")
 def upcoming():
