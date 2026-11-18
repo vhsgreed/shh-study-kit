@@ -10,6 +10,12 @@ Stockholm; the Canvas, Ladok and TimeEdit parts fit any Swedish university.
 [![Tests](https://img.shields.io/badge/tests-89%20offline-brightgreen.svg)](#tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+![unitoolkit in four queries](docs/demo-unitoolkit.gif)
+
+Four calls: what is due, full-text search inside a course, a database search with an APA
+reference, and the Ladok alert that only speaks when a fetch really failed. Real output from
+one morning, names and emails stripped.
+
 The point is one endpoint. A student should be able to say *"what do I need to do this week"*,
 *"find me three peer-reviewed sources on delirium prevention, in APA"*, or *"get me that
 article"*, and have the agent work it out, without the student learning which of six systems
