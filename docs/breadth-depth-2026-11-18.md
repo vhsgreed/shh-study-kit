@@ -3,8 +3,8 @@
 2026-11-18. Measured on this machine against live systems. Every number below was produced by
 running the tool, not read off a design document. Where something was not verified, it says so.
 
-Code state: 37 registered tools, 4 590 lines in `unitoolkit/*.py`, 88 offline tests in 11 files
-(green), `unitoolkit` 0.7.0. The announcements reader below was added while writing this report,
+Code state: 38 registered tools, ~4 640 lines in `unitoolkit/*.py`, 89 offline tests in 11 files
+(green), `unitoolkit` 0.7.0. Both Canvas gaps below were closed the same day this report was written. The announcements reader below was added while writing this report,
 after the gap turned up in testing.
 
 ## Breadth: eight systems, one server
@@ -18,7 +18,7 @@ after the gap turned up in testing.
 | **TimeEdit** | any course code, group, room | schedule for any period, bookable rooms, free gaps with the booking rules applied | 2026-11-18 09:40 (H26SK, 09:00–12:00 seminar) |
 | **SharePoint** | SHH share links | real file bytes through the logged-in browser | 2026-11-17 |
 | **Citations** | DOI registry | APA 7 from doi.org content negotiation (Crossref, DataCite), English and Swedish | 2026-11-17 |
-| **Agent surface** | MCP, CLI, JSON manifest | 10 core tools by default, 37 with `UNITOOLKIT_TOOLS=all` | 2026-11-18 |
+| **Agent surface** | MCP, CLI, JSON manifest | 11 core tools by default, 38 with `UNITOOLKIT_TOOLS=all` | 2026-11-18 |
 
 Depth means: how far past "it opens" a reader goes. Four of the nine databases are searchable from
 inside the agent; the other five open correctly but have to be searched by hand, which is the
@@ -77,8 +77,9 @@ Ordered by what it costs Karl, not by how hard it is.
    `discussion_topics` without `only_announcements=True` returns an empty list, which is why the
    first check said "no announcements" when there were 12, newest 2026-11-15. There is now an
    `announcements` tool (title, body, author, date) and `today` carries the last 14 days.
-   **Discussions proper still have no reader**, and a teacher who posts in a discussion rather
-   than an announcement is still invisible.
+   **Discussions proper** got their reader the same afternoon: `discussions` returns topics with
+   reply count, `read_state` and last reply, and `today` now lists unread threads inside the
+   window (live: empty for PRY, which has none, and one read thread in 2415).
 6. **Free sources are wired as constants, not as tools.** DiVA, DOAJ, ERIC and SwePub exist in
    `databases.FREE` but only PubMed and Libris have callable tools.
 7. **Not on PyPI.** Wheel built and installed into a clean 3.12 venv, but publishing needs a token
@@ -92,9 +93,11 @@ Ordered by what it costs Karl, not by how hard it is.
 1. ~~Koha login.~~ Done: it was a comment in JavaScript, not the library refusing us. Next: keep
    the attempt cap (one login per call, no retry loop) and see whether the chain proxy can be
    dropped in favour of the school's EZproxy-style session.
-2. A Canvas discussions reader (announcements are done). The same endpoint without the filter.
+2. ~~Canvas discussions reader.~~ Done 2026-11-18.
 3. Ladok: results and ISP. Results are the same proxy pattern as windows; ISP may not exist as a
    student endpoint at all, which is itself the answer Karl needs for the course admin.
 4. Readers for Författningshandbok and Nationalencyklopedin: both have plain search boxes and are
    the two the nursing programme actually cites.
+5. Ladok results, then the ISP question for the course admin: whether a student endpoint exists
+   at all is itself the answer Karl needs for credit transfer.
 5. Publish to PyPI once the token exists.
