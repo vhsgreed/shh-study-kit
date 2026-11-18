@@ -246,6 +246,9 @@ SUBMIT_SEARCH_JS = r'''(function(q){
 })(%s)'''
 
 
+_tries = [0]
+
+
 def search(q, limit=10):
     """Search through the catalogue form, like a person would.
 
@@ -273,6 +276,20 @@ def search(q, limit=10):
         rows = json.loads(p.eval(SEARCH_JS) or '[]')
         if not ok and not rows:
             raise KohaError('search returned no result page (proxy, Cloudflare or zero hits)')
+    # Sometimes the catalogue answers a search with the account page's login message instead
+    # of results. That row is not a hit: dropping it, and retrying once, turns a bogus
+    # "Log in using your SHH account" into either results or an honest error.
+    rows = [r for r in rows if not (r.get('biblio') is None and
+            (r.get('title') or '').lower().startswith('log in'))]
+    if not rows:
+        if _tries[0] >= 1:
+            raise KohaError('the catalogue served its login page instead of results for %r '
+                            '(session or Cloudflare, not an empty result)' % str(q)[:60])
+        _tries[0] += 1
+        try:
+            return search(q, limit)
+        finally:
+            _tries[0] = 0
     return rows[:limit]
 
 

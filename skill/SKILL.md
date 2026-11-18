@@ -32,7 +32,8 @@ keeps the rest callable by name; `UNITOOLKIT_TOOLS=all` lists everything. CLI:
 
 | Student asks | Call |
 |---|---|
-| "What do I need to do?" | `today` (Canvas deadlines, Ladok windows, timetable; `library=true` adds loans) |
+| "What do I need to do?" | `today` (deadlines not yet submitted, new announcements, unread discussions, Ladok windows, timetable; `library=true` adds loans) |
+| "Did a teacher post something?" / "Anything waiting in a group discussion?" | `announcements` / `discussions unread_only=true` |
 | "Something is broken" / any tool failed | `doctor`: every session with its fix |
 | "Find me sources on X" | `find_sources` |
 | "Get me the article" | `db_fulltext doi=` |

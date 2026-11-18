@@ -7,7 +7,7 @@ Stockholm; the Canvas, Ladok and TimeEdit parts fit any Swedish university.
 
 [![PyPI](https://img.shields.io/pypi/v/unitoolkit.svg)](https://pypi.org/project/unitoolkit/)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://pypi.org/project/unitoolkit/)
-[![Tests](https://img.shields.io/badge/tests-83%20offline-brightgreen.svg)](#tests)
+[![Tests](https://img.shields.io/badge/tests-89%20offline-brightgreen.svg)](#tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 The point is one endpoint. A student should be able to say *"what do I need to do this week"*,
@@ -26,7 +26,7 @@ codex mcp add unitoolkit -- unitoolkit-mcp       # Codex
 ```
 
 For Hermes, Cursor or any other MCP client the command is `unitoolkit-mcp` (stdio). The server
-lists **nine question-shaped tools** by default; `UNITOOLKIT_TOOLS=all` lists all 34, and every
+lists **eleven question-shaped tools** by default; `UNITOOLKIT_TOOLS=all` lists all 38, and every
 tool stays callable by name either way.
 
 ## Ask it this
@@ -37,6 +37,7 @@ tool stays callable by name either way.
 | "Find me sources on X, APA" | `find_sources` | CINAHL + PubMed + Cochrane (+ PsycInfo, Web of Science), deduplicated by DOI |
 | "Get me that article" | `db_fulltext doi=` | the PDF, through the school's subscription |
 | "What does the assignment ask?" | `assignment`, `search` | Canvas description and rubric |
+| "Did a teacher post anything?" | `announcements`, `discussions` | announcements with body text, and unread discussion threads |
 | "When is the seminar?" | `schedule query=1SPRY2` | TimeEdit, any course or student group, any period |
 | "Is a room free tomorrow?" | `free_rooms` | the TimeEdit booking guide, within the booking rules |
 | "Is the book in?" / "When are my books due?" | `library query=` / `library` | the catalogue, and the student's own account |
@@ -94,7 +95,7 @@ one, which is why the smoke test speaks only when something is wrong.
 
 ## Tests
 
-83 offline tests, no network: `python -m pytest tests -q`.
+89 offline tests, no network: `python -m pytest tests -q`.
 
 ## Extend it
 
