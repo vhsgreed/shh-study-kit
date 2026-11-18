@@ -99,6 +99,8 @@ export LADOK_AUTOLOGIN=1
 python3 -m ladok_vakt --login   # prova i förväg
 ```
 
+Omloggningen går samma väg som du: *Logga in via ditt lärosäte*, väljer lärosätet och trycker Login när Chrome har fyllt i det sparade lösenordet. Går det inte provar den den direkta SWAMID-länken. Fönstret behöver inte synas, så det fungerar även när skärmen är låst.
+
 Skriptet öppnar inloggningen via SWAMID, väntar tills Chrome har fyllt i
 formuläret och klickar på Login med ett riktigt musklick. Därefter kontrollerar
 det att Ladok svarar innan inloggningen rapporteras som lyckad.
@@ -125,6 +127,7 @@ gissar inte.
 | `LADOK_CLOSE_DAYS` | `3` | Larma när fönstret stänger inom så många dagar |
 | `LADOK_AUTOLOGIN` | `0` | Sätt till `1` för att försöka logga in igen med sparat lösenord |
 | `LADOK_IDP_ENTITY` | tom | Lärosätets SWAMID entityID; krävs för omloggning |
+| `LADOK_IDP_DOMAIN` | från entityID | Domänen lärosätesväljaren söker på, t.ex. `shh.se` |
 | `LADOK_STALE_HOURS` | `36` | Larma när senaste lyckade hämtning är äldre än så här |
 | `LADOK_MAIL_MIN_HOURS` | `20` | Minsta tid mellan fellarm per kanal |
 | `LADOK_HEARTBEAT` | `1` | Veckohälsokoll på måndagar; `0` stänger av |
