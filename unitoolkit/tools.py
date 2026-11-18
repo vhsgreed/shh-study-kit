@@ -140,6 +140,17 @@ def courses():
              "term": (c.get("term") or {}).get("name")} for c in canvas.courses()]
 
 
+@tool("discussions",
+      "Discussion topics across courses with read state and reply count, so a group discussion "
+      "that is waiting for an answer does not go unnoticed. Announcements are separate.",
+      {"course": {**I, "description": "Canvas course id; omitted: every active course"},
+       "days": {**I, "description": "Only topics replied to in the last N days; omitted: all"},
+       "unread_only": {**B, "description": "Skip topics already read"}})
+def discussions(course=None, days=None, unread_only=False):
+    from . import canvas
+    return canvas.discussions(course=course, days=days, unread_only=unread_only)
+
+
 @tool("announcements",
       "Course announcements, newest first, with body text. Canvas hides these from the plain "
       "discussion list, so this is the only way to see what a teacher posted.",

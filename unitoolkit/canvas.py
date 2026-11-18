@@ -130,6 +130,34 @@ def mirror(course_id, out, files=True):
             "files_downloaded": n_files, "bytes": n_bytes, "out": str(out)}
 
 
+def discussions(course=None, days=None, unread_only=False):
+    """Discussion topics (not announcements), across courses.
+
+    `read_state` is Canvas's per-student state, so this answers "is anything waiting for me in
+    a group discussion" - the digital group discussion in PRY is that kind of obligation.
+    """
+    out = []
+    scope = [course] if course else [c['id'] for c in courses()]
+    for cid in scope:
+        for t in try_get('/courses/%s/discussion_topics' % cid, per_page=50) or []:
+            if t.get('is_announcement'):
+                continue
+            if unread_only and t.get('read_state') == 'read':
+                continue
+            out.append({'id': t.get('id'), 'course_id': cid, 'title': t.get('title'),
+                        'posted_utc': t.get('posted_at'), 'last_reply_utc': t.get('last_reply_at'),
+                        'entries': t.get('discussion_subentry_count'),
+                        'read_state': t.get('read_state'), 'author': t.get('user_name'),
+                        'url': t.get('html_url'),
+                        'assignment_id': t.get('assignment_id'),
+                        'requires_entry': t.get('require_initial_post')})
+    if days:
+        cut = time.time() - days * 86400
+        out = [d for d in out if not d['last_reply_utc'] or
+               time.mktime(time.strptime(d['last_reply_utc'][:19], '%Y-%m-%dT%H:%M:%S')) >= cut]
+    return out
+
+
 def announcements(course=None, days=30):
     """Course announcements, newest first.
 

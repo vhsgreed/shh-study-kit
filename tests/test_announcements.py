@@ -35,3 +35,15 @@ def test_newest_first_and_day_window(monkeypatch):
 def test_empty_when_canvas_hides_them(monkeypatch):
     monkeypatch.setattr(canvas, 'try_get', lambda *a, **k: [])
     assert canvas.announcements(course=2416, days=30) == []
+
+
+def test_discussions_skip_announcements_and_filter_read(monkeypatch):
+    rows = [{'id': 1, 'title': 'group discussion', 'read_state': 'unread',
+             'discussion_subentry_count': 15, 'posted_at': '2026-11-10T10:00:00Z'},
+            {'id': 2, 'title': 'an announcement', 'is_announcement': True, 'read_state': 'read'},
+            {'id': 3, 'title': 'already read', 'read_state': 'read',
+             'discussion_subentry_count': 2}]
+    monkeypatch.setattr(canvas, 'try_get', lambda *a, **k: rows)
+    got = canvas.discussions(course=2415, unread_only=True)
+    assert [d['title'] for d in got] == ['group discussion']
+    assert got[0]['entries'] == 15 and got[0]['read_state'] == 'unread'

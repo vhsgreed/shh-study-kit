@@ -18,7 +18,7 @@ import os
 import time
 
 CORE = ('today', 'doctor', 'find_sources', 'db_fulltext', 'search', 'assignment', 'library',
-        'schedule', 'free_rooms', 'announcements')
+        'schedule', 'free_rooms', 'announcements', 'discussions')
 
 
 def listed(all_tools):
@@ -70,6 +70,15 @@ def _canvas_announcements(days):
     for a in call('announcements', {'days': days}):
         out.append({'posted_utc': a.get('posted_utc'), 'days_ago': abs(_days(a.get('posted_utc')) or 0),
                     'course_id': a.get('course_id'), 'title': a.get('title')})
+    return out
+
+
+def _canvas_discussions(days):
+    from .tools import call
+    out = []
+    for d in call('discussions', {'days': days, 'unread_only': True}):
+        out.append({'last_reply_utc': d.get('last_reply_utc'), 'course_id': d.get('course_id'),
+                    'title': d.get('title'), 'entries': d.get('entries')})
     return out
 
 
@@ -125,6 +134,7 @@ def today(days=14, library=False):
     out = {'date': dt.date.today().isoformat(), 'window_days': days,
            'canvas': _guard(lambda: _canvas_due(days)),
            'announcements': _guard(lambda: _canvas_announcements(days)),
+           'discussions': _guard(lambda: _canvas_discussions(days)),
            'ladok': _guard(lambda: _ladok_windows(days)),
            'schedule': _guard(lambda: _schedule(min(days, 7)))}
     if library:
