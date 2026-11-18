@@ -159,10 +159,17 @@ class _Page:
             raw = json.loads(await self.ws.recv())
             if raw.get('id') == mine:
                 return raw.get('result', raw)
+            # Events arrive between replies. Keep the recent ones: a login that fails with no
+            # on-page message is diagnosed from the POST's status and the page it landed on.
+            if raw.get('method') and hasattr(self, 'events'):
+                self.events.append(raw)
+                del self.events[:-40]
 
     def eval(self, expr):
         res = self.loop.run_until_complete(self.call(
             'Runtime.evaluate', {'expression': expr, 'returnByValue': True, 'awaitPromise': True}))
+        self.last_error = ((res.get('exceptionDetails') or {}).get('exception') or {}).get(
+            'description') or ''
         return (res.get('result') or {}).get('value')
 
     def goto(self, url, marker=None, timeout=25):
@@ -313,7 +320,7 @@ LOGIN_JS = r"""(function(user, pin){
   var ctx = f.querySelector('input[name=koha_login_context]');
   if (ctx) ctx.value = 'opac';
   var op = f.querySelector('input[name=login_op]');
-  if (op && !op.value) op.value = 'cud-login';   # Koha ignores the POST without it
+  if (op && !op.value) op.value = 'cud-login';   // Koha ignores the POST without it
   if (f.requestSubmit) f.requestSubmit(); else f.submit();
   return 'submitted';
 })(%s, %s)"""
@@ -540,6 +547,21 @@ def _advance_entra(p, timeout=90):
     return 'timeout'
 
 
+def _post_trace(p):
+    """What the last login POST got back, for a failure with nothing on the page."""
+    bits = []
+    for ev in getattr(p, 'events', []):
+        if ev.get('method') != 'Network.responseReceived':
+            continue
+        r = ev['params']['response']
+        if 'biblioteket.shh.se' in r.get('url', ''):
+            bits.append('%s %s' % (r.get('status'), (r.get('url') or '')[:70]))
+    page = p.eval("location.pathname + ' | ' + (document.title||'') + ' | ' + "
+                  "((document.querySelector('#modalAuth, #loginform, form[action*=login]') || "
+                  "{innerText: ''}).innerText || '').replace(/\\s+/g, ' ').slice(0, 120)")
+    return '; '.join((['page: %s' % page] if page else []) + (bits[-3:] or ['no response seen']))
+
+
 def _form_login(p, user, password):
     """Library form login, from a clean session.
 
@@ -548,6 +570,7 @@ def _form_login(p, user, password):
     proxy does. Start from a fresh session on the sticky exit, and load the page with cache
     bypassed so the CSRF token belongs to that session.
     """
+    p.events = []
     p.loop.run_until_complete(p.call('Network.enable'))
     p.loop.run_until_complete(p.call('Storage.clearCookies', {}))
     p.goto(USER + '?n=%d' % int(time.time()),
@@ -558,6 +581,10 @@ def _form_login(p, user, password):
         _click(p, 'a[href*="opac-user"]')
         time.sleep(2)
     state = p.eval(LOGIN_JS % (json.dumps(user), json.dumps(password)))
+    if getattr(p, 'last_error', ''):
+        # A script error is not a submit. It was read as one until 2026-11-18, which turned
+        # every broken login script into a silent "no answer" with no request sent.
+        return 'js error: %s' % p.last_error.splitlines()[0][:140]
     # A successful submit navigates immediately, which destroys the JS context and makes the
     # evaluate return None. That is success, not a missing form.
     if state not in ('submitted', None):
@@ -569,7 +596,7 @@ def _form_login(p, user, password):
         msg = p.eval("((document.querySelector('.alert, .dialog, #login_error, .form-error')||{}).innerText||'').replace(/\\s+/g,' ').slice(0,160)")
         if msg:
             return msg
-    return 'no answer'
+    return 'no answer: %s' % _post_trace(p)
 
 
 def _relax_samesite(p):
@@ -682,4 +709,4 @@ def status():
     return {'cdp': CDP, 'cdp_up': _cdp_up(), 'chain_proxy': '127.0.0.1:%d' % CHAIN_PORT,
             'proxy_enabled': os.environ.get('KOHA_PROXY', '1').lower() not in ('0', 'false', 'no', ''),
             'chain_up': _port_open(CHAIN_PORT), 'profile': PROFILE,
-            'credentials': bool(_secret('KOHA_USER') and _secret('KOHA_PIN'))}
+            'credentials': all(credentials())}

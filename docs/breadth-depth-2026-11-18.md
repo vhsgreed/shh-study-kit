@@ -3,7 +3,7 @@
 2026-11-18. Measured on this machine against live systems. Every number below was produced by
 running the tool, not read off a design document. Where something was not verified, it says so.
 
-Code state: 37 registered tools, 4 563 lines in `unitoolkit/*.py`, 86 offline tests in 11 files
+Code state: 37 registered tools, 4 590 lines in `unitoolkit/*.py`, 88 offline tests in 11 files
 (green), `unitoolkit` 0.7.0. The announcements reader below was added while writing this report,
 after the gap turned up in testing.
 
@@ -13,7 +13,7 @@ after the gap turned up in testing.
 |---|---|---|---|
 | **Canvas** | any Canvas school (token) | courses, modules, assignments with rubric, submissions, files, pages (via module items, the index is off at SHH), disk mirror, text extraction with OCR, full-text search over course + documents, endpoint surface probe | 2026-11-18 09:38, token expires 2026-12-14 |
 | **Databases (EZproxy)** | 9 subscription databases + 6 free sources | 4 searchable: CINAHL, PsycInfo, Cochrane, Web of Science. 5 open-only: JCR, Sage Research Methods, Nationalencyklopedin, Författningshandbok, PubMed-via-EZproxy. Full text by DOI where the publisher is proxied | 2026-11-18 09:41 (EZproxy admits as Sophiahemmet) |
-| **Library (Koha)** | catalogue + own account | search, per-copy availability, item detail, loans, holds, fines (Koha 26 table ids) | loans read 2026-11-17 17:00 (6 items). Login failed 2026-11-18 07:53 |
+| **Library (Koha)** | catalogue + own account | search, per-copy availability, item detail, loans, holds, fines (Koha 26 table ids) | 2026-11-18 10:12, 6 loans read after a full form login (80 s) |
 | **Ladok** | registration windows | windows with days to open/close, 4 live. No results, no ISP, no tillgodoräknande status | 2026-11-18 09:39 (heal 7 s, windows=4) |
 | **TimeEdit** | any course code, group, room | schedule for any period, bookable rooms, free gaps with the booking rules applied | 2026-11-18 09:40 (H26SK, 09:00–12:00 seminar) |
 | **SharePoint** | SHH share links | real file bytes through the logged-in browser | 2026-11-17 |
@@ -54,9 +54,15 @@ human fix, and the Canvas token expiry read from Canvas rather than from a note 
 
 Ordered by what it costs Karl, not by how hard it is.
 
-1. **Koha login is unreliable, and it is the one thing that needs a human.** It worked at 17:00 on
-   17/11 and failed at 07:53 on 18/11 with the same credentials; stopped after one attempt rather
-   than risk a lockout. Everything else in the kit is unattended; this is not.
+1. ~~**Koha login is unreliable.**~~ Fixed 2026-11-18 10:12, and the diagnosis was the opposite of
+   a lockout: `LOGIN_JS` carried a Python comment (`# Koha ignores the POST without it`) inside
+   the JavaScript. The script threw, Chrome DevTools answered with a JS exception, `eval()`
+   returned `None`, and `None` had been coded as "the form submitted and the page navigated" -
+   so no request was ever sent and the login reported "no answer" for a day and a half. One
+   character (`#` to `//`) and it logs in: 6 loans, 80 s round trip. `eval()` now keeps the JS
+   exception and `_form_login` returns it as `js error: ...`; a test forbids Python comments in
+   the JS constants. Remaining depth limit: the round trip is slow because it goes through the
+   residential proxy, so `today` keeps the library opt-in.
 2. **Ladok is windows only.** No results, no certificates, no ISP, no tillgodoräknande. The ISP
    question (worth 120 hp of credit transfer) cannot be answered by the tool yet.
 3. **Ladok's session does not persist.** Every Ladok and SWAMID cookie is a session cookie
@@ -83,8 +89,9 @@ Ordered by what it costs Karl, not by how hard it is.
 
 ## What I would do next, in order
 
-1. Koha login: find out why the form sometimes refuses, and add a `library` retry policy with a
-   hard attempt cap. Until then, `today` keeps library off by default.
+1. ~~Koha login.~~ Done: it was a comment in JavaScript, not the library refusing us. Next: keep
+   the attempt cap (one login per call, no retry loop) and see whether the chain proxy can be
+   dropped in favour of the school's EZproxy-style session.
 2. A Canvas discussions reader (announcements are done). The same endpoint without the filter.
 3. Ladok: results and ISP. Results are the same proxy pattern as windows; ISP may not exist as a
    student endpoint at all, which is itself the answer Karl needs for the course admin.
