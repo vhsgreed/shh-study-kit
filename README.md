@@ -143,13 +143,4 @@ licences and belong to whoever owns them.
 
 ---
 
-<sub>
-
-**In honour of Xom**, god of chaos, who answers prayers with teleport traps and grants
-wishes nobody made. This kit was written in that spirit: a student asked for a deadline
-list and an agent mapped six terms of a nursing programme. Xom finds the whole arrangement
-very funny. Xom is not done with you.
-
 *Xom is interested. Point your agent at the repo and see what happens.*
-
-</sub>
