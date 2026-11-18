@@ -5,6 +5,7 @@ No network: fixtures are built in memory. Real PDFs are exercised by the `docs` 
     python3 -m unittest discover -s tests -p 'test_docs.py'
 """
 import io
+import shutil
 import zipfile
 
 import unittest
@@ -66,6 +67,7 @@ class ExtractTests(unittest.TestCase):
         self.assertIn("Antal ord", info["text"])
         self.assertFalse(info["needs_ocr"])
 
+    @unittest.skipUnless(shutil.which('pdftotext'), 'pdftotext (poppler-utils) not installed')
     def test_extract_marks_image_only_content(self):
         info = D.extract("scan.pdf", b"%PDF-1.4 not a real pdf", allow_ocr=False)
         self.assertTrue(info["needs_ocr"], "an unreadable pdf must be flagged for OCR")
