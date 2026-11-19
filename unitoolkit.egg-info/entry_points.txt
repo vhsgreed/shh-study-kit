@@ -1,4 +1,0 @@
-[console_scripts]
-unitoolkit = unitoolkit.__main__:cli
-unitoolkit-chainproxy = unitoolkit.chainproxy:main
-unitoolkit-mcp = unitoolkit.mcp:main
