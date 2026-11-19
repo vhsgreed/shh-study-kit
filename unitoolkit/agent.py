@@ -179,11 +179,30 @@ def _check_browser():
     return ('warn' if n > 15 else 'ok'), '%d open tabs' % n, ('close stray tabs' if n > 15 else '')
 
 
+LADOK_SHOW_FIX = ('the automatic login could not finish (new Authenticator prompt or changed '
+                  'password?): open the agent browser with a window, sign in to Ladok once, close it')
+LADOK_OPTIN_FIX = ('set LADOK_AUTOLOGIN=1 and LADOK_IDP_ENTITY (your school\'s SWAMID entityID) so the '
+                   'toolkit logs in again by itself with the browser\'s saved password; '
+                   'or sign in to Ladok once in the agent browser')
+
+
+def _ladok_autologin_on():
+    v = os.environ.get('LADOK_AUTOLOGIN', '0').strip().lower()
+    return v not in ('', '0', 'false', 'no') and bool(os.environ.get('LADOK_IDP_ENTITY', '').strip())
+
+
 def _check_ladok():
+    """A missing session is normal (Ladok cookies end with the browser session).
+
+    With the opt-in auto-login on, ladok_windows has already tried to log in again before it
+    reports an error, so a failure here means that attempt failed and a human is needed.
+    """
     from .tools import call
     res = call('ladok_windows', {})
     if 'error' in res:
-        return 'fail', res['error'][:160], 'sign in to Ladok once in the agent browser'
+        if _ladok_autologin_on():
+            return 'fail', 'auto-login tried and failed: ' + res['error'][:140], LADOK_SHOW_FIX
+        return 'fail', res['error'][:160], LADOK_OPTIN_FIX
     rows = [r for r in res.get('windows') or [] if isinstance(r, dict)]   # rows, not text lines
     return 'ok', '%d registration windows readable' % len(rows), ''
 

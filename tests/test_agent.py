@@ -54,3 +54,40 @@ def test_doctor_reports_every_check_even_when_they_crash(monkeypatch):
     assert r['overall'] == 'fail'
     assert [c['check'] for c in r['checks']] == ['a', 'b']
     assert r['checks'][1]['status'] == 'ok'
+
+
+def _fake_ladok(monkeypatch, result):
+    import unitoolkit.tools as tools
+    monkeypatch.setattr(tools, 'call', lambda name, args: result)
+
+
+def test_ladok_check_points_to_the_opt_in_when_auto_login_is_off(monkeypatch):
+    monkeypatch.delenv('LADOK_AUTOLOGIN', raising=False)
+    monkeypatch.delenv('LADOK_IDP_ENTITY', raising=False)
+    _fake_ladok(monkeypatch, {'error': 'ingen Ladok-session'})
+    status, detail, fix = agent._check_ladok()
+    assert status == 'fail' and 'ingen Ladok-session' in detail
+    assert 'LADOK_AUTOLOGIN=1' in fix
+
+
+def test_ladok_check_asks_for_a_human_only_after_auto_login_failed(monkeypatch):
+    monkeypatch.setenv('LADOK_AUTOLOGIN', '1')
+    monkeypatch.setenv('LADOK_IDP_ENTITY', 'https://swamid.example.se/idp/shibboleth')
+    _fake_ladok(monkeypatch, {'error': 'inloggning misslyckades: picker: ...'})
+    status, detail, fix = agent._check_ladok()
+    assert status == 'fail' and detail.startswith('auto-login tried and failed')
+    assert 'sign in to Ladok once' in fix and 'LADOK_AUTOLOGIN' not in fix
+
+
+def test_ladok_auto_login_needs_both_settings(monkeypatch):
+    monkeypatch.setenv('LADOK_AUTOLOGIN', '1')
+    monkeypatch.delenv('LADOK_IDP_ENTITY', raising=False)
+    assert agent._ladok_autologin_on() is False
+    monkeypatch.setenv('LADOK_IDP_ENTITY', 'x')
+    monkeypatch.setenv('LADOK_AUTOLOGIN', 'no')
+    assert agent._ladok_autologin_on() is False
+
+
+def test_ladok_check_ok_counts_rows(monkeypatch):
+    _fake_ladok(monkeypatch, {'windows': [{'course': 'A'}, {'course': 'B'}, 'stray text line']})
+    assert agent._check_ladok() == ('ok', '2 registration windows readable', '')
