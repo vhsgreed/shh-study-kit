@@ -541,6 +541,27 @@ def libris(query, max=10):
     return out
 
 
+@tool("refs_search",
+      "Search clinician-side Swedish reference sites. site='vardhandboken'. Matches the "
+      "sitemap page paths, then returns the top hits with title, source URL, fetch date and a "
+      "snippet. Read a full page with refs_page. Internetmedicin is not supported (its "
+      "robots.txt excludes crawlers); FASS product pages need a browser (use `page`).",
+      {"site": S, "query": S, "limit": I}, ["site", "query"])
+def refs_search(site, query, limit=10):
+    from . import refs
+    return refs.search(site, query, limit)
+
+
+@tool("refs_page",
+      "One clinician-side reference page as text (Vårdhandboken, Läkemedelsboken, Janusinfo, "
+      "Viss). Returns url, title, fetched date and text. Cached on disk; refuses hosts and "
+      "paths their robots.txt disallows.",
+      {"url": S, "refresh": B}, ["url"])
+def refs_page(url, refresh=False):
+    from . import refs
+    return refs.page(url, refresh)
+
+
 # ---------------------------------------------------------- dispatch
 
 def call(name, args=None):
