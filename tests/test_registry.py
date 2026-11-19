@@ -56,8 +56,8 @@ def test_checker_writes_status_and_date(tmp_path, monkeypatch):
     data = json.loads(dst.read_text())
     rows = {d['id']: d for i in data['institutions'] for d in i['deployments']}
     assert rows['shh/ladok']['status'] == 'ok' and rows['shh/ladok']['last_verified']
-    # untouched rows keep their old state: no probes means untested, not ok
-    assert rows['shh/sharepoint']['status'] == 'untested'
+    # untouched rows keep their old state: a row with no probes is not silently blessed
+    assert rows['shh/viva-engage']['status'] == 'partial'
     assert data['last_run']
 
 
