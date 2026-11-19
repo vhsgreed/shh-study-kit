@@ -68,3 +68,8 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     statement about a known limit (write it by hand, with the limit in `gotchas`); `fail` and `ok`
     come from a test run. If a probe needs a login that costs the student something (Koha account
     logins count against the card), do not add a probe for it.
+
+13. **Never commit `*.egg-info/`, and never trust it for the version.** It sat in the repo with
+    `0.7.0` inside while `pyproject.toml` said `0.8.0`, so the wheel built in CI carried the old
+    version and PyPI rejected the upload as a duplicate. `build/`, `dist/` and the egg-info are
+    gitignored now; the version lives in `pyproject.toml` and `unitoolkit/__init__.py` only.
