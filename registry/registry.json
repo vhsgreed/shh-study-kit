@@ -195,9 +195,11 @@
           "id": "shh/sharepoint",
           "system": "sharepoint",
           "url": "https://shh365.sharepoint.com/sites/Minasidor-Student",
-          "status": "untested",
-          "last_verified": null,
-          "probes": [],
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "sharepoint portal"
+          ],
           "gotchas": [
             "List REST ignores $skip on Site Pages: page by $filter=Id gt N.",
             "Studenthjälpen AI (Copilot Studio) pane takes typed text but not a scripted Enter.",
@@ -215,7 +217,8 @@
             "JSON API answers 406 without the SPA's token; read rendered thread pages.",
             "Community feeds are virtualized and do not page back from a script: only linked or recent posts.",
             "Thread/group URLs are base64 of {\"_type\":\"Thread\",\"id\":\"...\"}."
-          ]
+          ],
+          "note": "status is manual: thread pages render, the community feed cannot be listed"
         }
       ]
     },

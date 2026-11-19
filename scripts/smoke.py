@@ -35,6 +35,9 @@ CHECKS = [
      lambda r: r['objects'] and isinstance(r['bookings'], list)),
     ('timeedit rooms', 'free_rooms', {}, lambda r: len(r['rooms']) >= 5),
     ('library catalogue', 'koha_search', {'q': 'omvårdnad', 'limit': 2}, lambda r: len(r) >= 1),
+    ('sharepoint portal', 'page',
+     {'url': 'https://shh365.sharepoint.com/sites/Minasidor-Student'},
+     lambda r: 'Studentportalen' in (r.get('title') or '') or 'Studentportalen' in (r.get('text') or '')[:600]),
 ]
 
 
