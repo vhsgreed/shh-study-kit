@@ -95,3 +95,10 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     `git diff --cached` and confirm each hunk is yours. Contributions arrive on a branch as a PR.
     And regenerate `tools.json` (rule at the top) in the same commit as any tool change; it had
     drifted eight tools behind.
+
+17. **Viva Engage: list posts from the SPA's GraphQL, not the feed DOM.** A group feed renders only
+    2-4 `a[href*=threads]` links whatever you scroll, and a mouse wheel at fixed coordinates does
+    nothing in headless Chrome. Scroll the `.os-viewport` that actually moves (set `scrollTop`) and
+    read thread ids from the `/graphql` responses (Network.getResponseBody); thread nodes there have
+    `databaseId` + `threadStarter` but no `__typename`, so match on shape. 4 posts became 217 this
+    way. Bodies still come from opening each thread page. `scripts/fetch_engage.py`.

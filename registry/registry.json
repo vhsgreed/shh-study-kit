@@ -246,7 +246,8 @@
           "gotchas": [
             "JSON API answers 406 without the SPA's token; read rendered thread pages.",
             "Community feeds are virtualized and do not page back from a script: only linked or recent posts.",
-            "Thread/group URLs are base64 of {\"_type\":\"Thread\",\"id\":\"...\"}."
+            "Thread/group URLs are base64 of {\"_type\":\"Thread\",\"id\":\"...\"}.",
+            "Posts are listed from the SPA's own /graphql feed responses read over CDP, not the feed DOM (it shows 2-4 thread links at most). Full save 2026-11-19: 217 threads, 2023-08 to today. Still no probe: status is manual (AGENTS.md rule 17)."
           ],
           "note": "status is manual: thread pages render, the community feed cannot be listed"
         }
