@@ -28,6 +28,11 @@ def test_refuses_paths_the_robots_file_disallows():
         refs._check("https://www.janusinfo.se/print/thing")
 
 
+def test_allows_the_bare_lakemedelsboken_host():
+    # the site serves pages from lakemedelsboken.se, not only www.
+    assert refs._check("https://lakemedelsboken.se/terapiomrader/psykiatri/") == "lakemedelsboken.se"
+
+
 def test_allows_ordinary_pages():
     assert refs._check("https://www.vardhandboken.se/vard-och-behandling/lakemedel/") == "www.vardhandboken.se"
     assert refs._check("https://viss.nu/kunskapsstod") == "viss.nu"

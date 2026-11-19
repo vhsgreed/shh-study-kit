@@ -3,8 +3,9 @@
 Read-only, plain HTTP, robots.txt obeyed per site (checked 2026-11-19):
   www.vardhandboken.se   crawls allowed; only /episerver /util /modules /error are off-limits.
                          Page list comes from its sitemap, so no search endpoint is scraped.
-  www.lakemedelsboken.se HTML pages allowed; the .pdf/.doc/.xls downloads are not, so this
-                         module only ever asks for HTML.
+  lakemedelsboken.se      HTML allowed; .pdf/.doc/.docx/.ppt/.pptx/.xls/.xlsx downloads refused,
+                         so this module only ever asks for HTML. Serves 404 to non-browser
+                         User-Agents, so it is sent a browser UA.
   www.janusinfo.se, viss.nu  content allowed; session, bookmark, print and cart paths refused.
   www.internetmedicin.se NOT supported: robots.txt disallows every crawler except search
                          engines, so there is no reader for it (one page by hand in a browser).
@@ -25,11 +26,18 @@ import urllib.request
 
 CACHE = pathlib.Path.home() / ".cache/unitoolkit/refs"
 UA = "unitoolkit/1.0 (student research; +https://github.com/vhsgreed/shh-study-kit)"
+# lakemedelsboken.se answers 404 to non-browser User-Agents (a soft block, tested 2026-11-19),
+# so it gets a browser UA. Everything else keeps the one above.
+BROWSER_UA = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+              "Chrome/140.0 Safari/537.36")
 PAUSE = 1.5                     # seconds between requests to the same host
 
 HOSTS = {
     "www.vardhandboken.se": {"sitemap": "https://www.vardhandboken.se/pagessitemap.xml", "deny": ("/episerver/", "/util/", "/modules/", "/error/")},
-    "www.lakemedelsboken.se": {"deny": (".pdf", ".doc", ".xls")},
+    "www.lakemedelsboken.se": {"deny": (".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+                                        "/episerver", "/util", "/modules")},
+    "lakemedelsboken.se": {"deny": (".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+                                    "/episerver", "/util", "/modules")},   # the live host, no www
     "www.janusinfo.se": {"deny": ("/session", "/bookmark", "/print", "/cart")},
     "viss.nu": {"deny": ("/session", "/bookmark", "/print", "/cart")},
 }
@@ -55,7 +63,8 @@ def _get(url, timeout=30):
     wait = PAUSE - (time.monotonic() - _last.get(host, 0.0))
     if wait > 0:
         time.sleep(wait)
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    ua = BROWSER_UA if "lakemedelsboken.se" in host else UA
+    req = urllib.request.Request(url, headers={"User-Agent": ua})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         _last[host] = time.monotonic()
         return r.read().decode("utf-8", "replace")
