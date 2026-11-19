@@ -161,6 +161,17 @@ def announcements(course=None, days=30):
     return canvas.announcements(course=course, days=days)
 
 
+@tool("canvas_file",
+      "Download one Canvas file by its id (lecture slides, an article attached to an assignment, a "
+      "rubric) to a local folder. Use the API route, not the /download web path: without a Canvas "
+      "browser session the web path redirects to the school homepage and yields an empty file. "
+      "Ids scraped from an assignment description may not all be course files; those 404.",
+      {"course": I, "file_id": I, "out": S}, ["course", "file_id"])
+def canvas_file(course, file_id, out=None):
+    from . import canvas
+    return canvas.save_file(course, file_id, out or "~/courses/downloads")
+
+
 @tool("upcoming", "Everything due from today across all Canvas courses: title, course, "
       "due (UTC), submitted. Start here for 'what is due?'.")
 def upcoming():

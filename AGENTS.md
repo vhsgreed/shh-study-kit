@@ -73,3 +73,11 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     `0.7.0` inside while `pyproject.toml` said `0.8.0`, so the wheel built in CI carried the old
     version and PyPI rejected the upload as a duplicate. `build/`, `dist/` and the egg-info are
     gitignored now; the version lives in `pyproject.toml` and `unitoolkit/__init__.py` only.
+
+14. **Canvas files: the API route, never the web `/download` path.** `courses/:id/files/:file_id`
+    returns metadata plus a pre-signed `url`; GET that URL and you have the bytes, cookies not
+    involved. `/courses/:id/files/:file_id/download` is the browser route: without a Canvas session
+    it 302s to shh.se and hands back an empty body, which reads like "the file is unavailable" and
+    sent us chasing the browser instead of the API. Files attached to an assignment are covered by
+    the API. Ids lifted out of assignment HTML are not all course files (banners, emoji), so expect
+    404 on those and skip them. `canvas_file course= file_id= out=` does all of it.

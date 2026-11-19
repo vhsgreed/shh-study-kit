@@ -77,6 +77,35 @@ def safe(name):
     return re.sub(r'[\\/:*?"<>|\n\r\t]+', "_", name).strip()[:150] or "unnamed"
 
 
+def file_meta(course_id, file_id):
+    """One file's metadata: display_name, size, and the pre-signed `url` to fetch it from.
+
+    Use this, not the web path. `/courses/<id>/files/<file_id>/download` is a browser route:
+    without a Canvas session it 302s to shh.se, which is what an empty download looks like.
+    The API answers for any file the student can see, including files attached to an
+    assignment description, and hands back a URL that needs no cookie.
+    """
+    return get("courses/%s/files/%s" % (course_id, file_id))
+
+
+def save_file(course_id, file_id, out="~/courses/downloads"):
+    """Download one Canvas file by id. Returns {file_id, name, bytes, path}.
+
+    Ids scraped out of an assignment description are not all course files (banners and
+    emoji live elsewhere and answer 404 here), so a caller looping over them should expect
+    HTTPError and skip.
+    """
+    meta = file_meta(course_id, file_id)
+    name = meta.get("display_name") or meta.get("filename") or ("canvas-%s" % file_id)
+    url = meta.get("url")
+    if not url:
+        raise ValueError("file %s has no download url (locked or deleted?)" % file_id)
+    dest = pathlib.Path(out).expanduser() / safe(name)
+    n = download(url, dest)
+    return {"file_id": file_id, "name": name, "bytes": n, "path": str(dest)}
+
+
+
 def courses():
     return get("courses", **{"include[]": ["term", "syllabus_body"], "state[]": ["available", "completed"]})
 

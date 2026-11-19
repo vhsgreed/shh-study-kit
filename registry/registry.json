@@ -108,8 +108,10 @@
           ],
           "gotchas": [
             "Announcements are hidden from the plain discussion list: ask for only_announcements.",
-            "Students may lack list access to pages and quizzes; read pages through module items."
-          ]
+            "Students may lack list access to pages and quizzes; read pages through module items.",
+            "Files attached to an assignment are readable by the token: courses/:id/files/:file_id returns a pre-signed url, then plain GET. The web path /courses/:id/files/:file_id/download is a browser route and 302s to shh.se without a Canvas session, which looks like an empty download. Ids scraped from an assignment description are not all course files (banners, emoji): those answer 404."
+          ],
+          "adapter": "; unitoolkit: canvas_file"
         },
         {
           "id": "shh/ladok",
