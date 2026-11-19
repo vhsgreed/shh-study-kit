@@ -81,3 +81,9 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     sent us chasing the browser instead of the API. Files attached to an assignment are covered by
     the API. Ids lifted out of assignment HTML are not all course files (banners, emoji), so expect
     404 on those and skip them. `canvas_file course= file_id= out=` does all of it.
+
+15. **A soft block is still a block.** lakemedelsboken.se answers 404 to non-browser
+    User-Agents. Sending a browser UA gets the page, but that is choosing to get past a filter the
+    site put up, so it sits behind `UNITOOLKIT_REFS_BROWSER_UA=1` and the refusal names the reason.
+    Do not quietly dress another reader in a browser UA; either use the real browser (`page`) or
+    make the choice explicit and log it in the registry.

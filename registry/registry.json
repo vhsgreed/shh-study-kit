@@ -87,6 +87,34 @@
       "adapter": "unitoolkit: apa",
       "auth": "none",
       "elsewhere": []
+    },
+    "vardhandboken": {
+      "kind": "clinician reference (Sweden)",
+      "vendor": "Sveriges Kommuner och Regioner",
+      "adapter": "unitoolkit: ref_search, ref_page",
+      "auth": "none",
+      "elsewhere": []
+    },
+    "lakemedelsboken": {
+      "kind": "clinician drug reference (Sweden)",
+      "vendor": "Läkemedelsverket",
+      "adapter": "unitoolkit: ref_page (opt-in browser UA)",
+      "auth": "none",
+      "elsewhere": []
+    },
+    "janusinfo": {
+      "kind": "clinician drug info (Region Stockholm)",
+      "vendor": "Janusinfo",
+      "adapter": "unitoolkit: ref_page",
+      "auth": "none",
+      "elsewhere": []
+    },
+    "viss": {
+      "kind": "clinician knowledge support (Region Stockholm)",
+      "vendor": "Viss.nu",
+      "adapter": "unitoolkit: ref_page",
+      "auth": "none",
+      "elsewhere": []
     }
   },
   "institutions": [
@@ -253,6 +281,65 @@
           "gotchas": [
             "Crossref lowercases Cochrane DOIs.",
             "Some Wiley titles carry a 'Portico.' prefix."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "se-clinician",
+      "name": "Swedish clinician references (no institution)",
+      "country": "SE",
+      "maintainer": "github:health-kun",
+      "deployments": [
+        {
+          "id": "se-clinician/vardhandboken",
+          "system": "vardhandboken",
+          "url": "https://www.vardhandboken.se",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "vardhandboken search"
+          ],
+          "gotchas": [
+            "No site search is scraped: the page list comes from pagessitemap.xml (1190 pages) and queries match page paths, so a word that is not in a slug finds nothing.",
+            "Path matching folds diacritics, so 'hjartsvikt' finds 'hjärtsvikt'."
+          ]
+        },
+        {
+          "id": "se-clinician/lakemedelsboken",
+          "system": "lakemedelsboken",
+          "url": "https://lakemedelsboken.se",
+          "status": "partial",
+          "last_verified": null,
+          "probes": [],
+          "gotchas": [
+            "Answers 404 to non-browser User-Agents. Reading it means sending a browser UA past a block the site chose, so the reader refuses unless UNITOOLKIT_REFS_BROWSER_UA=1.",
+            "Binary downloads (.pdf, .doc*, .xls*) are refused by robots.txt and by the reader."
+          ]
+        },
+        {
+          "id": "se-clinician/viss",
+          "system": "viss",
+          "url": "https://viss.nu",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "viss page"
+          ],
+          "gotchas": [
+            "/session, /bookmark, /print and /cart paths are disallowed and refused."
+          ]
+        },
+        {
+          "id": "se-clinician/janusinfo",
+          "system": "janusinfo",
+          "url": "https://www.janusinfo.se",
+          "status": "partial",
+          "last_verified": null,
+          "probes": [],
+          "gotchas": [
+            "No probe yet: reads fine by hand (ref_page), but nothing runs weekly against it.",
+            "/session, /bookmark, /print and /cart paths are refused."
           ]
         }
       ]
