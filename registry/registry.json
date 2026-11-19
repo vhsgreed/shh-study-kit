@@ -1,0 +1,257 @@
+{
+  "schema": "unitoolkit-registry/1",
+  "about": "Which university systems an AI agent can read on a student's behalf, per institution: the adapter, its status, when it was last tested, and the gotchas. Machine-first: query with the unitoolkit 'registry' tool, or fetch this file raw.",
+  "raw_url": "https://raw.githubusercontent.com/vhsgreed/shh-study-kit/master/registry/registry.json",
+  "status_values": {
+    "ok": "the last automated or manual test passed",
+    "partial": "works with a stated limit (see gotchas)",
+    "fail": "the last test failed; the adapter needs a fix",
+    "untested": "listed but never tested at this institution"
+  },
+  "systems": {
+    "canvas": {
+      "kind": "LMS",
+      "vendor": "Instructure",
+      "adapter": "unitoolkit: upcoming, assignment, search, announcements, discussions",
+      "auth": "personal access token",
+      "elsewhere": [
+        "https://github.com/vishalsachdev/canvas-mcp",
+        "https://github.com/DMontgomery40/mcp-canvas-lms"
+      ]
+    },
+    "moodle": {
+      "kind": "LMS",
+      "vendor": "Moodle",
+      "adapter": null,
+      "auth": "web service token",
+      "elsewhere": [
+        "https://glama.ai/mcp/servers/Mattlo0546/moodle-mcp",
+        "https://lmscloud.io/products/moodle-mcp"
+      ]
+    },
+    "ladok": {
+      "kind": "student records (Sweden)",
+      "vendor": "Ladokkonsortiet",
+      "adapter": "unitoolkit: ladok_windows (vendored ladok-vakt)",
+      "auth": "SWAMID SSO in a browser session; optional re-login with the browser's saved password",
+      "elsewhere": []
+    },
+    "timeedit": {
+      "kind": "timetable",
+      "vendor": "TimeEdit",
+      "adapter": "unitoolkit: schedule, free_rooms",
+      "auth": "none for public views",
+      "elsewhere": []
+    },
+    "koha": {
+      "kind": "library catalogue + account",
+      "vendor": "Koha (open source)",
+      "adapter": "unitoolkit: koha_search, library",
+      "auth": "card number + PIN, or SSO",
+      "elsewhere": []
+    },
+    "ezproxy": {
+      "kind": "licensed databases + full text",
+      "vendor": "OCLC EZproxy",
+      "adapter": "unitoolkit: db_search, db_fulltext, find_sources",
+      "auth": "institutional SSO in a browser session",
+      "elsewhere": []
+    },
+    "sharepoint": {
+      "kind": "intranet / student portal",
+      "vendor": "Microsoft 365",
+      "adapter": "unitoolkit: sharepoint_download; scripts/fetch_studentportalen.py",
+      "auth": "Entra ID SSO in a browser session",
+      "elsewhere": [
+        "https://github.com/Softeria/ms-365-mcp-server",
+        "https://github.com/microsoft/mcp"
+      ]
+    },
+    "viva-engage": {
+      "kind": "news / community posts",
+      "vendor": "Microsoft 365",
+      "adapter": "scripts/fetch_engage.py (rendered pages only)",
+      "auth": "Entra ID SSO in a browser session",
+      "elsewhere": []
+    },
+    "pubmed": {
+      "kind": "open bibliographic database",
+      "vendor": "NLM",
+      "adapter": "unitoolkit: pubmed",
+      "auth": "none",
+      "elsewhere": []
+    },
+    "crossref": {
+      "kind": "DOI metadata -> APA",
+      "vendor": "Crossref / doi.org",
+      "adapter": "unitoolkit: apa",
+      "auth": "none",
+      "elsewhere": []
+    }
+  },
+  "institutions": [
+    {
+      "id": "shh",
+      "name": "Sophiahemmet Högskola",
+      "country": "SE",
+      "sso": "SWAMID (https://swamid2.shh.se/idp/shibboleth) + Entra ID",
+      "maintainer": "github:vhsgreed",
+      "deployments": [
+        {
+          "id": "shh/canvas",
+          "system": "canvas",
+          "url": "https://shh.instructure.com",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "canvas upcoming"
+          ],
+          "gotchas": [
+            "Announcements are hidden from the plain discussion list: ask for only_announcements.",
+            "Students may lack list access to pages and quizzes; read pages through module items."
+          ]
+        },
+        {
+          "id": "shh/ladok",
+          "system": "ladok",
+          "url": "https://www.student.ladok.se/student/app/studentwebb/",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "ladok windows"
+          ],
+          "gotchas": [
+            "Logged out, the data endpoint answers HTTP 200 with the HTML app shell: check for a JSON body, not the status.",
+            "Session cookies only: every new browser session logs in again.",
+            "Chrome releases an autofilled password only after a user-gesture click; a background tab draws no frames, so bring it to front first.",
+            "Read-only scope here: registration windows. Not results, certificates or ISP."
+          ]
+        },
+        {
+          "id": "shh/timeedit",
+          "system": "timeedit",
+          "url": "https://cloud.timeedit.net/shh/web/student/",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "timeedit course",
+            "timeedit rooms"
+          ],
+          "gotchas": [
+            "schedule() returns {objects, bookings}; bookings are dicts, not rows.",
+            "Room booking: 08-20 weekdays, 3 days ahead, max 4 h."
+          ]
+        },
+        {
+          "id": "shh/koha",
+          "system": "koha",
+          "url": "https://biblioteket.shh.se",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "library catalogue"
+          ],
+          "gotchas": [
+            "Cloudflare in front; some home IPs get port 443 dropped and plain HTTP clients get 429: a real browser behind a sticky residential proxy works.",
+            "A Koha session is bound to the client IP: a rotating proxy logs you out ('logging from a different IP').",
+            "Koha 25+ needs login_op=cud-login or the form re-renders silently.",
+            "The SSO hand-back is a cross-site POST that drops a SameSite=Lax CGISESSID.",
+            "Koha 26 renamed the loans table to #checkoutst.",
+            "Account login is NOT probed automatically: failed logins count against the student's card."
+          ]
+        },
+        {
+          "id": "shh/ezproxy",
+          "system": "ezproxy",
+          "url": "https://shh.idm.oclc.org",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "cinahl search",
+            "psycinfo search",
+            "cochrane search",
+            "wos search"
+          ],
+          "databases": [
+            "CINAHL",
+            "PsycInfo",
+            "Cochrane Library",
+            "Web of Science",
+            "JCR (open only)",
+            "Sage Research Methods (open only)",
+            "NE (open only)",
+            "Författningshandbok (open only)"
+          ],
+          "gotchas": [
+            "EBSCO reads a space-separated query as one phrase: join terms with AND.",
+            "Use %20, not '+': EBSCO reads a literal plus as an operator.",
+            "Cochrane ignores Enter; click the search button, and check the first result changed.",
+            "Full text: capture the PDF at the network layer (CDP Fetch, Response stage); script downloads hit viewers or bot checks.",
+            "De Gruyter titles are not proxied.",
+            "Keep full-text pulls under 20/hour per student."
+          ]
+        },
+        {
+          "id": "shh/sharepoint",
+          "system": "sharepoint",
+          "url": "https://shh365.sharepoint.com/sites/Minasidor-Student",
+          "status": "untested",
+          "last_verified": null,
+          "probes": [],
+          "gotchas": [
+            "List REST ignores $skip on Site Pages: page by $filter=Id gt N.",
+            "Studenthjälpen AI (Copilot Studio) pane takes typed text but not a scripted Enter.",
+            "The separate APA-guide site (/sites/APA-guide) is the school's citation authority."
+          ]
+        },
+        {
+          "id": "shh/viva-engage",
+          "system": "viva-engage",
+          "url": "https://engage.cloud.microsoft",
+          "status": "partial",
+          "last_verified": "2026-11-18",
+          "probes": [],
+          "gotchas": [
+            "JSON API answers 406 without the SPA's token; read rendered thread pages.",
+            "Community feeds are virtualized and do not page back from a script: only linked or recent posts.",
+            "Thread/group URLs are base64 of {\"_type\":\"Thread\",\"id\":\"...\"}."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "global",
+      "name": "Open sources (no institution)",
+      "country": null,
+      "maintainer": "github:vhsgreed",
+      "deployments": [
+        {
+          "id": "global/pubmed",
+          "system": "pubmed",
+          "url": "https://eutils.ncbi.nlm.nih.gov",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "pubmed"
+          ],
+          "gotchas": []
+        },
+        {
+          "id": "global/crossref",
+          "system": "crossref",
+          "url": "https://doi.org",
+          "status": "ok",
+          "last_verified": "2026-11-19",
+          "probes": [
+            "apa from doi"
+          ],
+          "gotchas": [
+            "Crossref lowercases Cochrane DOIs.",
+            "Some Wiley titles carry a 'Portico.' prefix."
+          ]
+        }
+      ]
+    }
+  ],
+  "last_run": "2026-11-19"
+}

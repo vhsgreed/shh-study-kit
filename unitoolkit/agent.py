@@ -17,7 +17,7 @@ import datetime as dt
 import os
 import time
 
-CORE = ('today', 'doctor', 'find_sources', 'db_fulltext', 'search', 'assignment', 'library',
+CORE = ('today', 'registry', 'doctor', 'find_sources', 'db_fulltext', 'search', 'assignment', 'library',
         'schedule', 'free_rooms', 'announcements', 'discussions')
 
 

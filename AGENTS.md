@@ -57,3 +57,14 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     `ESTSAUTHPERSISTENT` cookie lasts 90 days and is renewed on use, and EZproxy re-admits
     silently from it. A daily keepalive (`db_status`) is therefore enough; only a renewed MFA
     demand needs a human.
+
+11. **When you find a new site quirk, write it into the registry, not just into a comment.**
+    `registry/registry.json` is what the next agent reads before it debugs the same SSO route or
+    cookie by hand. Add the row or extend its `gotchas`, and give it probes if the failure is
+    detectable (`scripts/smoke.py`). Statuses and `last_verified` dates are written by
+    `scripts/registry_check.py` only: never hand-edit them, and never mark a row `ok` by hand.
+    A row without probes stays `untested` on purpose; an honest gap beats a false green.
+12. **Untested rows are the registry's weak point, so keep them visible.** `partial` is a human
+    statement about a known limit (write it by hand, with the limit in `gotchas`); `fail` and `ok`
+    come from a test run. If a probe needs a login that costs the student something (Koha account
+    logins count against the card), do not add a probe for it.

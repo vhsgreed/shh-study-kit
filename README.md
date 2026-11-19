@@ -60,6 +60,23 @@ tool stays callable by name either way.
 | **Databases** | CINAHL and PsycInfo (EBSCOhost), Cochrane, Web of Science, plus PubMed and Libris | Everything subscription sits behind the school's OCLC EZproxy: one sign-in covers all of them. |
 | **Citations** | APA 7 from a DOI, a DOI from a title | APA comes from the DOI registry, not from scraped search cards. |
 
+## Registry: what works where
+
+[`registry/registry.json`](registry/registry.json) is the machine-readable answer to "can an agent
+read this system at this school, and what breaks?". One row per system per institution: the
+adapter, a status (`ok`, `partial`, `fail`, `untested`), the date it was last tested, and the
+gotchas that cost hours to find. A weekly worker runs each row's probes and writes the status and
+date back, so a green row means "tested", not "probably fine".
+
+```console
+$ python -m unitoolkit registry text=cloudflare
+$ python -m unitoolkit registry institution=shh status=ok
+$ curl -s https://raw.githubusercontent.com/vhsgreed/shh-study-kit/master/registry/registry.json
+```
+
+Any school can be added with its own rows. `scripts/registry_check.py` does the testing and
+`scripts/smoke.py` holds the probes; rows without probes stay `untested` rather than pretending.
+
 ## What it refuses
 
 - **Nothing is written.** No submissions, no registrations, no bookings, no renewals, no

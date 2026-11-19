@@ -46,4 +46,4 @@ unitoolkit = "unitoolkit"
 ladok_vakt = "vendor/ladok-vakt/ladok_vakt"
 
 [tool.setuptools.package-data]
-unitoolkit = ["../tools.json"]
+unitoolkit = ["../tools.json", "../registry/registry.json"]

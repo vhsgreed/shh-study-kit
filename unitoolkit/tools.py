@@ -502,6 +502,19 @@ def apa(doi, lang="en"):
     return {"doi": citation.clean_doi(doi), "apa": citation.apa(doi, lang or "en")}
 
 
+@tool("registry",
+      "Which university systems an agent can read, per institution: the adapter, status, last "
+      "verified date and the gotchas that break it. Ask before writing an adapter or debugging an "
+      "SSO/cookie failure. Filters: system='ladok', institution='shh', status='ok'|'partial'|"
+      "'fail'|'untested', text='cloudflare'. No filters returns every row.",
+      {"system": S, "institution": S, "status": S, "text": S})
+def registry_lookup(system=None, institution=None, status=None, text=None):
+    from . import registry
+    rows = registry.query(system=system, institution=institution, status=status, text=text,
+                          include_elsewhere=True)
+    return {"count": len(rows), "last_run": registry.load().get("last_run"), "rows": rows}
+
+
 @tool("pubmed", "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
       {"query": S, "max": I}, ["query"])
 def pubmed(query, max=10):
@@ -539,6 +552,27 @@ def libris(query, max=10):
                     "publisher": x.get("publisher"), "isbn": x.get("isbn"),
                     "type": x.get("type"), "url": x.get("identifier")})
     return out
+
+
+@tool("refs_search",
+      "Search clinician-side Swedish reference sites. site='vardhandboken'. Matches the "
+      "sitemap page slugs, then returns the top hits with title, source URL, fetch date and a "
+      "snippet. Read a full page with refs_page. Internetmedicin is not supported (its "
+      "robots.txt excludes crawlers); FASS product pages need a browser (use `page`).",
+      {"site": S, "query": S, "limit": I}, ["site", "query"])
+def refs_search(site, query, limit=10):
+    from . import refs
+    return refs.search(site, query, limit)
+
+
+@tool("refs_page",
+      "One clinician-side reference page as text (Vårdhandboken, Läkemedelsboken, Janusinfo, "
+      "Viss). Returns url, title, fetched date and text. Cached on disk; refuses hosts and "
+      "paths their robots.txt disallows.",
+      {"url": S, "refresh": B}, ["url"])
+def refs_page(url, refresh=False):
+    from . import refs
+    return refs.page(url, refresh)
 
 
 # ---------------------------------------------------------- dispatch
