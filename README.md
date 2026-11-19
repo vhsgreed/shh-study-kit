@@ -164,6 +164,6 @@ licences and belong to whoever owns them.
 
 ### Clinician references (contributed by health-kun)
 
-`ref_search query=` searches Vårdhandboken by matching your words against its page index, and
-`ref_page url=` reads one page from Vårdhandboken, Läkemedelsboken, Janusinfo or Viss as text with
+`refs_search site=vardhandboken query=` searches Vårdhandboken by matching your words against its page index, and
+`refs_page url=` reads one page from Vårdhandboken, Läkemedelsboken, Janusinfo or Viss as text with
 its source URL and fetch date. Internetmedicin has no reader: its robots.txt disallows crawlers.

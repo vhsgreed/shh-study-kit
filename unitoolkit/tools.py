@@ -172,27 +172,6 @@ def canvas_file(course, file_id, out=None):
     return canvas.save_file(course, file_id, out or "~/courses/downloads")
 
 
-@tool("ref_search",
-      "Search Vårdhandboken, the Swedish clinical handbook, by matching your words against its "
-      "page index, then reading the best hits. Returns url, title, snippet and fetch date. This is "
-      "the clinician-side reference, not 1177.",
-      {"query": S, "limit": I}, ["query"])
-def ref_search(query, limit=8):
-    from . import refs
-    return refs.vardhandboken_search(query, limit or 8)
-
-
-@tool("ref_page",
-      "Read one page from an allowed clinician reference site as text, with its source URL and "
-      "fetch date. Allowed hosts: vardhandboken.se, lakemedelsboken.se (needs "
-      "UNITOOLKIT_REFS_BROWSER_UA=1, it blocks non-browser agents on purpose), janusinfo.se, viss.nu. "
-      "Internetmedicin is refused: its robots.txt disallows every crawler.",
-      {"url": S, "refresh": B}, ["url"])
-def ref_page(url, refresh=False):
-    from . import refs
-    return refs.page(url, refresh=bool(refresh))
-
-
 @tool("upcoming", "Everything due from today across all Canvas courses: title, course, "
       "due (UTC), submitted. Start here for 'what is due?'.")
 def upcoming():
@@ -600,7 +579,8 @@ def refs_search(site, query, limit=10):
 @tool("refs_page",
       "One clinician-side reference page as text (Vårdhandboken, Läkemedelsboken, Janusinfo, "
       "Viss). Returns url, title, fetched date and text. Cached on disk; refuses hosts and "
-      "paths their robots.txt disallows.",
+      "paths their robots.txt disallows. Läkemedelsboken blocks non-browser agents on purpose, so "
+      "it is refused unless UNITOOLKIT_REFS_BROWSER_UA=1; otherwise read it with `page`.",
       {"url": S, "refresh": B}, ["url"])
 def refs_page(url, refresh=False):
     from . import refs

@@ -91,28 +91,28 @@
     "vardhandboken": {
       "kind": "clinician reference (Sweden)",
       "vendor": "Sveriges Kommuner och Regioner",
-      "adapter": "unitoolkit: ref_search, ref_page",
+      "adapter": "unitoolkit: refs_search, refs_page",
       "auth": "none",
       "elsewhere": []
     },
     "lakemedelsboken": {
       "kind": "clinician drug reference (Sweden)",
       "vendor": "Läkemedelsverket",
-      "adapter": "unitoolkit: ref_page (opt-in browser UA)",
+      "adapter": "unitoolkit: refs_page (opt-in browser UA)",
       "auth": "none",
       "elsewhere": []
     },
     "janusinfo": {
       "kind": "clinician drug info (Region Stockholm)",
       "vendor": "Janusinfo",
-      "adapter": "unitoolkit: ref_page",
+      "adapter": "unitoolkit: refs_page",
       "auth": "none",
       "elsewhere": []
     },
     "viss": {
       "kind": "clinician knowledge support (Region Stockholm)",
       "vendor": "Viss.nu",
-      "adapter": "unitoolkit: ref_page",
+      "adapter": "unitoolkit: refs_page",
       "auth": "none",
       "elsewhere": []
     }
@@ -338,7 +338,7 @@
           "last_verified": null,
           "probes": [],
           "gotchas": [
-            "No probe yet: reads fine by hand (ref_page), but nothing runs weekly against it.",
+            "No probe yet: reads fine by hand (refs_page), but nothing runs weekly against it.",
             "/session, /bookmark, /print and /cart paths are refused."
           ]
         }

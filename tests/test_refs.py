@@ -100,8 +100,9 @@ def test_opt_in_picks_the_browser_ua_without_a_request(monkeypatch):
 
 def test_tools_are_registered():
     from unitoolkit.tools import TOOLS
-    assert set(TOOLS["ref_search"]["inputSchema"]["properties"]) == {"query", "limit"}
-    assert set(TOOLS["ref_page"]["inputSchema"]["properties"]) == {"url", "refresh"}
+    assert set(TOOLS["refs_search"]["inputSchema"]["properties"]) == {"site", "query", "limit"}
+    assert set(TOOLS["refs_page"]["inputSchema"]["properties"]) == {"url", "refresh"}
+    assert "ref_search" not in TOOLS and "ref_page" not in TOOLS   # one name per tool
 
 
 def test_search_folds_diacritics(monkeypatch):

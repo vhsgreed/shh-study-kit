@@ -87,3 +87,11 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     site put up, so it sits behind `UNITOOLKIT_REFS_BROWSER_UA=1` and the refusal names the reason.
     Do not quietly dress another reader in a browser UA; either use the real browser (`page`) or
     make the choice explicit and log it in the registry.
+
+16. **Shared checkout: read the staged diff, not the file list.** Two agents work in this clone.
+    `git add <path>` stages everything in that file, including another agent's uncommitted edits;
+    that is how health-kun's `refs_search`/`refs_page` landed inside an unrelated `canvas_file`
+    commit and then got registered a second time under other names. Before every commit run
+    `git diff --cached` and confirm each hunk is yours. Contributions arrive on a branch as a PR.
+    And regenerate `tools.json` (rule at the top) in the same commit as any tool change; it had
+    drifted eight tools behind.

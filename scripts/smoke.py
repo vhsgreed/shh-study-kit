@@ -38,9 +38,9 @@ CHECKS = [
     ('sharepoint portal', 'page',
      {'url': 'https://shh365.sharepoint.com/sites/Minasidor-Student'},
      lambda r: 'Studentportalen' in (r.get('title') or '') or 'Studentportalen' in (r.get('text') or '')[:600]),
-    ('vardhandboken search', 'ref_search', {'query': 'hjart', 'limit': 2},
+    ('vardhandboken search', 'refs_search', {'site': 'vardhandboken', 'query': 'hjart', 'limit': 2},
      lambda r: len(r) == 2 and all(h.get('url') and h.get('title') for h in r)),
-    ('viss page', 'ref_page', {'url': 'https://viss.nu/kunskapsstod'},
+    ('viss page', 'refs_page', {'url': 'https://viss.nu/kunskapsstod'},
      lambda r: 'Viss' in (r.get('title') or '') and len(r.get('text') or '') > 200),
 ]
 

@@ -114,6 +114,71 @@
   }
  },
  {
+  "name": "discussions",
+  "description": "Discussion topics across courses with read state and reply count, so a group discussion that is waiting for an answer does not go unnoticed. Announcements are separate.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "course": {
+     "type": "integer",
+     "description": "Canvas course id; omitted: every active course"
+    },
+    "days": {
+     "type": "integer",
+     "description": "Only topics replied to in the last N days; omitted: all"
+    },
+    "unread_only": {
+     "type": "boolean",
+     "description": "Skip topics already read"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "announcements",
+  "description": "Course announcements, newest first, with body text. Canvas hides these from the plain discussion list, so this is the only way to see what a teacher posted.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "course": {
+     "type": "integer",
+     "description": "Canvas course id; omitted: every active course"
+    },
+    "days": {
+     "type": "integer",
+     "description": "How far back, default 30"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "canvas_file",
+  "description": "Download one Canvas file by its id (lecture slides, an article attached to an assignment, a rubric) to a local folder. Use the API route, not the /download web path: without a Canvas browser session the web path redirects to the school homepage and yields an empty file. Ids scraped from an assignment description may not all be course files; those 404.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "course": {
+     "type": "integer"
+    },
+    "file_id": {
+     "type": "integer"
+    },
+    "out": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "course",
+    "file_id"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "upcoming",
   "description": "Everything due from today across all Canvas courses: title, course, due (UTC), submitted. Start here for 'what is due?'.",
   "inputSchema": {
@@ -583,6 +648,29 @@
   }
  },
  {
+  "name": "registry",
+  "description": "Which university systems an agent can read, per institution: the adapter, status, last verified date and the gotchas that break it. Ask before writing an adapter or debugging an SSO/cookie failure. Filters: system='ladok', institution='shh', status='ok'|'partial'|'fail'|'untested', text='cloudflare'. No filters returns every row.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "system": {
+     "type": "string"
+    },
+    "institution": {
+     "type": "string"
+    },
+    "status": {
+     "type": "string"
+    },
+    "text": {
+     "type": "string"
+    }
+   },
+   "required": [],
+   "additionalProperties": false
+  }
+ },
+ {
   "name": "pubmed",
   "description": "Search PubMed. Returns PMID, title, journal, year, authors, DOI.",
   "inputSchema": {
@@ -616,6 +704,48 @@
    },
    "required": [
     "query"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "refs_search",
+  "description": "Search clinician-side Swedish reference sites. site='vardhandboken'. Matches the sitemap page slugs, then returns the top hits with title, source URL, fetch date and a snippet. Read a full page with refs_page. Internetmedicin is not supported (its robots.txt excludes crawlers); FASS product pages need a browser (use `page`).",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "site": {
+     "type": "string"
+    },
+    "query": {
+     "type": "string"
+    },
+    "limit": {
+     "type": "integer"
+    }
+   },
+   "required": [
+    "site",
+    "query"
+   ],
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "refs_page",
+  "description": "One clinician-side reference page as text (Vårdhandboken, Läkemedelsboken, Janusinfo, Viss). Returns url, title, fetched date and text. Cached on disk; refuses hosts and paths their robots.txt disallows. Läkemedelsboken blocks non-browser agents on purpose, so it is refused unless UNITOOLKIT_REFS_BROWSER_UA=1; otherwise read it with `page`.",
+  "inputSchema": {
+   "type": "object",
+   "properties": {
+    "url": {
+     "type": "string"
+    },
+    "refresh": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "url"
    ],
    "additionalProperties": false
   }
