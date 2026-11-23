@@ -130,7 +130,7 @@
           "system": "canvas",
           "url": "https://shh.instructure.com",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "canvas upcoming"
           ],
@@ -146,7 +146,7 @@
           "system": "ladok",
           "url": "https://www.student.ladok.se/student/app/studentwebb/",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "ladok windows"
           ],
@@ -162,7 +162,7 @@
           "system": "timeedit",
           "url": "https://cloud.timeedit.net/shh/web/student/",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "timeedit course",
             "timeedit rooms"
@@ -176,8 +176,8 @@
           "id": "shh/koha",
           "system": "koha",
           "url": "https://biblioteket.shh.se",
-          "status": "ok",
-          "last_verified": "2026-11-19",
+          "status": "fail",
+          "last_verified": "2026-11-23",
           "probes": [
             "library catalogue"
           ],
@@ -195,7 +195,7 @@
           "system": "ezproxy",
           "url": "https://shh.idm.oclc.org",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "cinahl search",
             "psycinfo search",
@@ -226,7 +226,7 @@
           "system": "sharepoint",
           "url": "https://shh365.sharepoint.com/sites/Minasidor-Student",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "sharepoint portal"
           ],
@@ -264,7 +264,7 @@
           "system": "pubmed",
           "url": "https://eutils.ncbi.nlm.nih.gov",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "pubmed"
           ],
@@ -275,7 +275,7 @@
           "system": "crossref",
           "url": "https://doi.org",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "apa from doi"
           ],
@@ -297,7 +297,7 @@
           "system": "vardhandboken",
           "url": "https://www.vardhandboken.se",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "vardhandboken search"
           ],
@@ -323,7 +323,7 @@
           "system": "viss",
           "url": "https://viss.nu",
           "status": "ok",
-          "last_verified": "2026-11-19",
+          "last_verified": "2026-11-23",
           "probes": [
             "viss page"
           ],
@@ -346,5 +346,5 @@
       ]
     }
   ],
-  "last_run": "2026-11-19"
+  "last_run": "2026-11-23"
 }
