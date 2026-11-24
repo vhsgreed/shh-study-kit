@@ -106,7 +106,13 @@ def ensure_browser(timeout=40):
             time.sleep(1.5)
             if _cdp_up():
                 return True
-        raise KohaError('proxied Chrome did not come up on %s' % CDP)
+        # a cold start on a loaded machine can take longer than one wait: give it a second window
+        # before declaring a fault, so a slow launch is not reported as a dead reader
+        for _ in range(int(timeout / 1.5)):
+            time.sleep(1.5)
+            if _cdp_up():
+                return True
+        raise KohaError('proxied Chrome did not come up on %s (twice %ds)' % (CDP, timeout))
     return True
 
 
