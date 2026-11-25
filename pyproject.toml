@@ -25,6 +25,7 @@ classifiers = [
 dependencies = ["websockets>=10"]
 
 [project.optional-dependencies]
+quiz = ["playwright>=1.40"]   # optional: `quiz` drives New Quizzes via Playwright over CDP
 docs = ["pdftotext"]          # optional: `docs` extracts PDF text via the pdftotext binary
 dev = ["pytest>=7", "build", "twine"]
 

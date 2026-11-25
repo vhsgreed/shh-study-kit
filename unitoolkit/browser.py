@@ -74,8 +74,18 @@ def _eval(call, expr):
     return run()
 
 
-def page(url, wait=4.0, text=True):
-    """Open url in a fresh tab of the logged-in profile, wait, return {url,title,text|html}."""
+def page(url, wait=4.0, text=True, _healed=False):
+    """Open url in a fresh tab of the logged-in profile, wait, return {url,title,text|html}.
+    A Canvas URL that lands on the school's bounce page is healed once through SAML and retried."""
+    r = _page(url, wait, text)
+    if not _healed and CANVAS_HOST in url and _bounced(r.get("url")):
+        h = canvas_heal()
+        r = _page(url, wait, text) if h.get("ok") else {**r, "heal": h}
+        r["healed"] = bool(h.get("ok"))
+    return r
+
+
+def _page(url, wait=4.0, text=True):
     t = new_tab(url)
 
     async def steps(call):
@@ -122,6 +132,43 @@ def fetch(url, origin, as_json=True):
 
 
 LOGIN_MARKERS = ("login.microsoftonline.com", "/login", "wayf", "discovery", "seamlessaccess")
+
+# Canvas SSO entry. A Canvas URL opened without a canvas_session (a session cookie, gone after
+# every browser restart) is bounced to the school's marketing page, not to a login form. The
+# SAML endpoint below rides the long-lived Entra cookie (ESTSAUTHPERSISTENT) straight back in.
+CANVAS_HOST = os.environ.get("UNITOOLKIT_CANVAS_HOST", "shh.instructure.com")
+CANVAS_SSO = os.environ.get("UNITOOLKIT_CANVAS_SSO", f"https://{CANVAS_HOST}/login/saml/237")
+CANVAS_BOUNCE = ("shh.se/sv/mina-sidor/canvas", "/login/canvas", "/login?")
+
+
+def _bounced(url):
+    u = (url or "").lower()
+    return any(m in u for m in CANVAS_BOUNCE)
+
+
+def canvas_heal(wait=20):
+    """Re-enter Canvas through SAML. Returns {ok, landed}. Never types anything: if Entra wants a
+    password or MFA, the result says so and a human signs in once (agent_chrome.sh --show)."""
+    t = new_tab("about:blank")
+
+    async def steps(call):
+        await call("Page.enable")
+        await call("Page.navigate", url=CANVAS_SSO)
+        landed = ""
+        for _ in range(wait * 2):
+            await asyncio.sleep(0.5)
+            landed = await _eval(call, "location.href") or ""
+            if CANVAS_HOST in landed and "/login" not in landed:
+                return {"ok": True, "landed": landed}
+        human = "login.microsoftonline.com" in landed
+        return {"ok": False, "landed": landed,
+                "needs_human": human,
+                "fix": "agent_chrome.sh --show, sign in once with 'stay signed in', close" if human else None}
+
+    try:
+        return asyncio.run(_session(t["webSocketDebuggerUrl"], steps))
+    finally:
+        close_tab(t["id"])
 
 
 def fetch_binary(url, origin):

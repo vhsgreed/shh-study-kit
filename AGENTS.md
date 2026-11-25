@@ -103,16 +103,24 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     `databaseId` + `threadStarter` but no `__typename`, so match on shape. 4 posts became 217 this
     way. Bodies still come from opening each thread page. `scripts/fetch_engage.py`.
 
-19. **New Quizzes is not Classic Quizzes.** The `Självrättande test` assignments are LTI links
-    (`*.quiz-lti-dub-prod.instructure.com`) whose questions live in a cross-origin iframe. There is
-    no Canvas REST endpoint for them: `quizzes` returns empty, and the assignment's only URL is a
-    `sessionless_launch`. `quiz` therefore attaches to the iframe as a separate CDP target
-    (`Target.getTargets` + `attachToTarget(flatten=True)`) and drives it with DOM events: labels for
-    options, the native value setter plus `input`/`change` for text, `execCommand('insertText')` for
-    contenteditable. Answer by label text, never index, because the order is shuffled per attempt.
-    New Quizzes renders a start button until an attempt is in progress, so `open` clicks it.
-    Only a signed-in agent browser can do any of this; a logged-out tab silently redirects to
-    shh.se/sv/mina-sidor/canvas, which reads as "no quiz page open" if you do not check the URL.
+19. **New Quizzes is not Classic Quizzes, and its questions are NOT in an iframe.** The
+    `Självrättande test` assignments are LTI links with no Canvas REST route (`quizzes` returns
+    empty). Opened in the signed-in browser they redirect to `/assignments/<id>/taking/<n>` and the
+    questions render in the top page. The cross-origin frames you will find (Learnosity's
+    `xdomain` XHR proxy, Canvas's `post_message_forwarding`) hold nothing: attaching to them was
+    the first, wrong, attempt. One question per screen, marked "Frågan på placeringen N"; the
+    "Frågenavigatör" strip lists every question, marks the unanswered ones ("…, obesvarad") and
+    jumps directly. Radios/checkboxes are real inputs at opacity 0.0001 behind a label, so click
+    the label. A blank is a textbox named "Fråga tom 1 av 1"; fill, then Tab. Answers save
+    server-side as you go (they survive a reload). Answer by label text, never index: the order
+    is shuffled per attempt. `quiz` uses Playwright `connect_over_cdp` on the agent Chrome, run on
+    a private thread because the MCP server already owns an event loop.
+
+20. **A Canvas URL with no session bounces to shh.se, not to a login form.** `canvas_session` is
+    a session cookie and dies with every browser restart; the Canvas front door then sends you to
+    `www.shh.se/sv/mina-sidor/canvas/`, which looks like "not signed in" but is not. The Entra
+    cookie (`ESTSAUTHPERSISTENT`, months) is still there: `/login/saml/237` goes straight back in
+    with nothing typed. `browser.page()` does this once, by itself (`canvas_heal`).
 
 18. **OneDrive needs no Graph app.** The school's personal site (`shh365-my.sharepoint.com`) answers
     the OneDrive v2.0 API (`/_api/v2.0/me/drive/...`) to a fetch made inside that origin with the
