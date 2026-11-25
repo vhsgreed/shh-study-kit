@@ -61,6 +61,7 @@ The full registry, for when the core is not enough:
 | `page url=` | browser | rendered text of any walled page |
 | `fetch url= origin=` | browser | JSON from internal APIs with the site's cookies |
 | `sharepoint_download share_url= out=` | browser | file from a SharePoint share link |
+| `quiz action= url= choice= text= index= kind=` | browser (school sign-in) | Canvas **New Quizzes** (the LTI self-correcting tests): `open`, `state` (question text, options with checked flags, text fields, enabled buttons), `answer` (`choice=` matches an option label, case-insensitive, so shuffling does not matter; `text=` fills a field), `submit`, `close`. New Quizzes has no Canvas REST route: it runs in a cross-origin LTI iframe, so this attaches to that iframe's own CDP target |
 | `onedrive action= path= query= name= drive_id= item_id= out=` | browser (school sign-in) | own OneDrive and "Shared with me" in the school's Office 365, read only: `status`, `ls`, `shared` (name/owner filter), `recent`, `search`, `download` (never overwrites). A classmate's shared doc downloads from *their* drive by `drive_id`+`item_id`; no app registration needed |
 | `programme` | browser | all 21 SHH nursing courses, kursplan + litteraturlista on disk |
 | `timeedit url=` | none | bookings from a TimeEdit link |

@@ -283,6 +283,33 @@ def onedrive(action, path="", query=None, name=None, drive_id=None, item_id=None
     return {"error": f"unknown action {action!r}: status|ls|shared|recent|search|download"}
 
 
+# ---------------------------------------------------------- New Quizzes (LTI, via CDP)
+
+@tool("quiz", "Canvas New Quizzes (the LTI self-correcting tests): read the open question, answer "
+      "it, submit. action=open|state|answer|submit|close. open takes url=; state takes optional "
+      "url=; answer takes choice= (option label, case-insensitive substring) or text= (free text, "
+      "index= picks the field) or kind=checkbox; submit clicks the submit control and reports the "
+      "result page. Needs the signed-in agent browser.",
+      {"action": S, "url": S, "choice": S, "text": S, "index": I, "kind": S}, ["action"])
+def quiz(action, url=None, choice=None, text=None, index=0, kind=None):
+    from . import quizzes
+    if action == "open":
+        if not url:
+            return {"error": "open needs url="}
+        return quizzes.open_quiz(url)
+    if action == "state":
+        return quizzes.state(url)
+    if action == "answer":
+        if not (choice or text):
+            return {"error": "answer needs choice= or text="}
+        return quizzes.answer(text=text, choice=choice, index=index or 0, kind=kind, url=url)
+    if action == "submit":
+        return quizzes.submit_quiz(url)
+    if action == "close":
+        return quizzes.close_quiz()
+    return {"error": "unknown action %r: open|state|answer|submit|close" % action}
+
+
 # ---------------------------------------------------------- Course search
 
 @tool("search", "Full-text search inside one course: pages, assignments with rubrics, "

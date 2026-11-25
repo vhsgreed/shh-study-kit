@@ -103,6 +103,17 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     `databaseId` + `threadStarter` but no `__typename`, so match on shape. 4 posts became 217 this
     way. Bodies still come from opening each thread page. `scripts/fetch_engage.py`.
 
+19. **New Quizzes is not Classic Quizzes.** The `Självrättande test` assignments are LTI links
+    (`*.quiz-lti-dub-prod.instructure.com`) whose questions live in a cross-origin iframe. There is
+    no Canvas REST endpoint for them: `quizzes` returns empty, and the assignment's only URL is a
+    `sessionless_launch`. `quiz` therefore attaches to the iframe as a separate CDP target
+    (`Target.getTargets` + `attachToTarget(flatten=True)`) and drives it with DOM events: labels for
+    options, the native value setter plus `input`/`change` for text, `execCommand('insertText')` for
+    contenteditable. Answer by label text, never index, because the order is shuffled per attempt.
+    New Quizzes renders a start button until an attempt is in progress, so `open` clicks it.
+    Only a signed-in agent browser can do any of this; a logged-out tab silently redirects to
+    shh.se/sv/mina-sidor/canvas, which reads as "no quiz page open" if you do not check the URL.
+
 18. **OneDrive needs no Graph app.** The school's personal site (`shh365-my.sharepoint.com`) answers
     the OneDrive v2.0 API (`/_api/v2.0/me/drive/...`) to a fetch made inside that origin with the
     signed-in agent browser's cookies, so `onedrive` reads the student's drive and "Shared with me"
