@@ -19,7 +19,9 @@ import urllib.request
 
 from . import browser
 
-QUIZ_HOST = re.compile(r'quiz-lti|quizzes\.next|quiz-lti-', re.I)
+# New Quizzes renders questions with Learnosity inside a second cross-origin iframe,
+# and the LTI shell is quiz-lti; both are candidates for where the DOM lives.
+QUIZ_HOST = re.compile(r'quiz-lti|quizzes\.next|learnosity', re.I)
 
 # ---------------------------------------------------------------- DOM inspection (in page)
 SCAN_JS = r"""
@@ -150,7 +152,7 @@ CLICK_BUTTON_JS = r"""
 
 # ---------------------------------------------------------------- CDP plumbing
 def _targets():
-    with urllib.request.urlopen(f'http://127.0.0.1:{browser.PORT}/json', timeout=5) as r:
+    with urllib.request.urlopen(f'{browser.base()}/json', timeout=5) as r:
         return json.load(r)
 
 

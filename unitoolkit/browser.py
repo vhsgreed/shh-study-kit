@@ -14,21 +14,36 @@ import os
 import urllib.request
 
 PORT = int(os.environ.get("SHHKIT_CDP_PORT", "9233"))
+# A second Chrome on the same port binds the other stack: the windowed instance (a human signing
+# in) can end up on [::1] while a stale headless one keeps 127.0.0.1. Probe both, use the one up.
+HOSTS = os.environ.get("SHHKIT_CDP_HOSTS", "127.0.0.1,[::1]").split(",")
+
+
+def base():
+    for h in HOSTS:
+        h = h.strip()
+        try:
+            with urllib.request.urlopen(f"http://{h}:{PORT}/json/version", timeout=2) as r:
+                if r.status == 200:
+                    return f"http://{h}:{PORT}"
+        except Exception:
+            continue
+    return f"http://{HOSTS[0].strip()}:{PORT}"
 
 
 def targets():
-    with urllib.request.urlopen(f"http://127.0.0.1:{PORT}/json", timeout=5) as r:
+    with urllib.request.urlopen(f"{base()}/json", timeout=5) as r:
         return [t for t in json.load(r) if t.get("type") == "page"]
 
 
 def new_tab(url="about:blank"):
-    req = urllib.request.Request(f"http://127.0.0.1:{PORT}/json/new?{url}", method="PUT")
+    req = urllib.request.Request(f"{base()}/json/new?{url}", method="PUT")
     with urllib.request.urlopen(req, timeout=10) as r:
         return json.load(r)
 
 
 def close_tab(tid):
-    urllib.request.urlopen(f"http://127.0.0.1:{PORT}/json/close/{tid}", timeout=5).read()
+    urllib.request.urlopen(f"{base()}/json/close/{tid}", timeout=5).read()
 
 
 async def _session(ws_url, steps):
