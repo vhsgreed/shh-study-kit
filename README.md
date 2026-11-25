@@ -9,6 +9,7 @@ Stockholm; the Canvas, Ladok and TimeEdit parts fit any Swedish university.
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://pypi.org/project/unitoolkit/)
 [![Tests](https://img.shields.io/badge/tests-89%20offline-brightgreen.svg)](#tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![vhsgreed/shh-study-kit MCP server](https://glama.ai/mcp/servers/vhsgreed/shh-study-kit/badges/score.svg)](https://glama.ai/mcp/servers/vhsgreed/shh-study-kit)
 
 ![unitoolkit in four queries](docs/demo-unitoolkit.gif)
 
