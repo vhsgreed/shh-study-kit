@@ -253,6 +253,36 @@ def sharepoint_download(share_url, out="~/courses/downloads"):
     return sharepoint.save_share(share_url, out)
 
 
+# --------------------------------------------------- OneDrive / Office 365 (read only)
+
+@tool("onedrive", "The student's OneDrive and files shared with them in the school's Office 365, "
+      "read only, via the signed-in agent browser. action=status|ls|shared|recent|search|download. "
+      "ls takes path= (own drive) or drive_id+item_id (any folder); shared takes query= (name or "
+      "owner filter); search takes query=; download takes name= or drive_id+item_id, plus out= "
+      "(dir, default ~/courses/onedrive; never overwrites).",
+      {"action": S, "path": S, "query": S, "name": S, "drive_id": S, "item_id": S, "out": S},
+      ["action"])
+def onedrive(action, path="", query=None, name=None, drive_id=None, item_id=None,
+             out="~/courses/onedrive"):
+    from . import onedrive as od
+    try:
+        if action == "status":
+            return od.status()
+        if action == "ls":
+            return {"items": od.ls(path, drive_id, item_id)}
+        if action == "shared":
+            return {"items": od.shared(query)}
+        if action == "recent":
+            return {"items": od.recent()}
+        if action == "search":
+            return od.search(query or "")
+        if action == "download":
+            return od.download(out, name, drive_id, item_id)
+    except (od.SessionGone, LookupError, ValueError, RuntimeError) as e:
+        return {"error": str(e)}
+    return {"error": f"unknown action {action!r}: status|ls|shared|recent|search|download"}
+
+
 # ---------------------------------------------------------- Course search
 
 @tool("search", "Full-text search inside one course: pages, assignments with rubrics, "

@@ -38,6 +38,8 @@ CHECKS = [
     ('sharepoint portal', 'page',
      {'url': 'https://shh365.sharepoint.com/sites/Minasidor-Student'},
      lambda r: 'Studentportalen' in (r.get('title') or '') or 'Studentportalen' in (r.get('text') or '')[:600]),
+    ('onedrive shared', 'onedrive', {'action': 'shared'},
+     lambda r: isinstance(r.get('items'), list) and all(i.get('drive_id') and i.get('item_id') for i in r['items'])),
     ('vardhandboken search', 'refs_search', {'site': 'vardhandboken', 'query': 'hjart', 'limit': 2},
      lambda r: len(r) == 2 and all(h.get('url') and h.get('title') for h in r)),
     ('viss page', 'refs_page', {'url': 'https://viss.nu/kunskapsstod'},

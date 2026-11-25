@@ -18,7 +18,7 @@ import os
 import time
 
 CORE = ('today', 'registry', 'doctor', 'find_sources', 'db_fulltext', 'search', 'assignment', 'library',
-        'schedule', 'free_rooms', 'announcements', 'discussions')
+        'schedule', 'free_rooms', 'announcements', 'discussions', 'onedrive')
 
 
 def listed(all_tools):

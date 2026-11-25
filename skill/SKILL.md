@@ -61,6 +61,7 @@ The full registry, for when the core is not enough:
 | `page url=` | browser | rendered text of any walled page |
 | `fetch url= origin=` | browser | JSON from internal APIs with the site's cookies |
 | `sharepoint_download share_url= out=` | browser | file from a SharePoint share link |
+| `onedrive action= path= query= name= drive_id= item_id= out=` | browser (school sign-in) | own OneDrive and "Shared with me" in the school's Office 365, read only: `status`, `ls`, `shared` (name/owner filter), `recent`, `search`, `download` (never overwrites). A classmate's shared doc downloads from *their* drive by `drive_id`+`item_id`; no app registration needed |
 | `programme` | browser | all 21 SHH nursing courses, kursplan + litteraturlista on disk |
 | `timeedit url=` | none | bookings from a TimeEdit link |
 | `pubmed query= max=` | none | PMID, title, journal, year, DOI, authors |

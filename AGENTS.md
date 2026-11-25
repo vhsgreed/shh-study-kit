@@ -102,3 +102,11 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     read thread ids from the `/graphql` responses (Network.getResponseBody); thread nodes there have
     `databaseId` + `threadStarter` but no `__typename`, so match on shape. 4 posts became 217 this
     way. Bodies still come from opening each thread page. `scripts/fetch_engage.py`.
+
+18. **OneDrive needs no Graph app.** The school's personal site (`shh365-my.sharepoint.com`) answers
+    the OneDrive v2.0 API (`/_api/v2.0/me/drive/...`) to a fetch made inside that origin with the
+    signed-in agent browser's cookies, so `onedrive` reads the student's drive and "Shared with me"
+    without an app registration, token or admin consent. Shared items are `remoteItem`s whose bytes
+    sit in the sharer's drive: address `drives/<driveId>/items/<id>`. The sharer is in
+    `shared.sharedBy` on this tenant. Read only: do not add write routes; a group member's live
+    document is theirs.

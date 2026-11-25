@@ -238,6 +238,24 @@
      ]
     },
     {
+     "id": "shh/onedrive",
+     "system": "onedrive",
+     "url": "https://shh365-my.sharepoint.com/",
+     "status": "ok",
+     "last_verified": "2026-11-25",
+     "adapter": "unitoolkit/onedrive.py (tool: onedrive)",
+     "probes": [
+      "onedrive shared"
+     ],
+     "gotchas": [
+      "No app registration or Graph token: the personal site serves /_api/v2.0/me/drive/... (Graph-shaped JSON) to a fetch inside https://shh365-my.sharepoint.com/ with the signed-in agent browser's cookies.",
+      "Items shared by a classmate come back from sharedWithMe as remoteItem; their bytes live in the owner's drive, so download via drives/<remoteItem.parentReference.driveId>/items/<remoteItem.id>/content, never me/drive.",
+      "The tenant names the sharer in remoteItem.shared.sharedBy, not shared.owner as the Graph docs show.",
+      "A shared doc's modified time moves while the classmate types in Word on the web: re-download before comparing, and never overwrite a local copy (the reader adds a timestamp suffix).",
+      "Read only by design: no upload, edit or delete route is offered."
+     ]
+    },
+    {
      "id": "shh/viva-engage",
      "system": "viva-engage",
      "url": "https://engage.cloud.microsoft",
@@ -347,5 +365,5 @@
    ]
   }
  ],
- "last_run": "2026-11-24"
+ "last_run": "2026-11-25"
 }
