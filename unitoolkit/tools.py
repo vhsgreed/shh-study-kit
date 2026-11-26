@@ -11,14 +11,33 @@ import urllib.request
 
 TOOLS = {}
 
+# Tools that write files next to the caller (course mirrors, extracted text, downloads). MCP's
+# readOnlyHint is about modifying the environment, so a local write counts: these are the only
+# tools that get readOnlyHint=false by default. Everything else only reads.
+LOCAL_WRITERS = ("mirror", "docs", "sharepoint_download", "programme", "onedrive", "fetch_sources")
+# Tools that change something a person would care about if an agent ran them unasked.
+DESTRUCTIVE = ("quiz",)          # quiz can submit graded answers
 
-def tool(name, description, properties=None, required=()):
+# A directory that checks our MCP listing (m8ven.ai) flagged the tools for declaring none of the
+# four MCP hints, and OpenAI's directory rejects tools where any hint is missing or non-boolean.
+# Every tool now carries all four, explicitly.
+def tool(name, description, properties=None, required=(), annotations=None):
+    ann = {
+        "title": name,
+        "readOnlyHint": name not in LOCAL_WRITERS and name not in DESTRUCTIVE,
+        "destructiveHint": name in DESTRUCTIVE,
+        "idempotentHint": name not in LOCAL_WRITERS and name not in DESTRUCTIVE,
+        "openWorldHint": True,   # every one of these talks to a system outside this process
+    }
+    ann.update(annotations or {})
+
     def wrap(fn):
         TOOLS[name] = {
             "name": name,
             "description": description,
             "inputSchema": {"type": "object", "properties": properties or {},
                             "required": list(required), "additionalProperties": False},
+            "annotations": ann,
             "fn": fn,
         }
         return fn
