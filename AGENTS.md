@@ -115,6 +115,16 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     server-side as you go (they survive a reload). Answer by label text, never index: the order
     is shuffled per attempt. `quiz` uses Playwright `connect_over_cdp` on the agent Chrome, run on
     a private thread because the MCP server already owns an event loop.
+21. **Ladok is lärosäte-scoped, and one login opens every lärosäte.** Every studentwebb call goes to
+    `/student/proxy/<id>/` where the id is the lärosäte (38 = Sophiahemmet, 28 = Karolinska
+    Institutet). The SPA switches context through `/student/app/studentwebb/byt-larosate/<id>`, and
+    the same session then answers for that institution, with the same student UID. So a student with
+    prior studies elsewhere does not need a second login to see them. Everything is hypermedia: the
+    per-course grade link (`resultat/studentresultat/attesterade?kursUID=…`) rides on each course
+    occasion, and the course-instance endpoint is 403 for a student account, so course hp comes
+    from the occasion's `Omfattningsvarde`. A credit transfer carries both sides: `Mal` is the course
+    being credited here, `Grunder` is the prior study (with its own lärosäte, hp and examiner) it
+    rests on. `scripts/ladok_results_all.py` walks all of this read-only.
 
 20. **A Canvas URL with no session bounces to shh.se, not to a login form.** `canvas_session` is
     a session cookie and dies with every browser restart; the Canvas front door then sends you to
