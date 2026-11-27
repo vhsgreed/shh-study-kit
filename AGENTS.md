@@ -148,3 +148,12 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     sit in the sharer's drive: address `drives/<driveId>/items/<id>`. The sharer is in
     `shared.sharedBy` on this tenant. Read only: do not add write routes; a group member's live
     document is theirs.
+
+24. **Koha has credentials on disk, and `open_login` used to pretend it did not.** The library login
+    (card number + pinkod) is in `~/.secrets/KOHA_CREDENTIALS`; `loans()` and the search paths read
+    it and log in by themselves. `open_login()` nevertheless only opened a window and answered "sign
+    in in the open window", which reads exactly like "no credentials exist" and sent a whole session
+    hunting a human sign-in. It now tries the credentials login first and reports
+    `credentials_login_failed` with the reason when it falls back. Also: two processes attaching to
+    the koha Chrome at once drop each other's CDP socket (`ConnectionClosedError: no close frame`),
+    so never run two koha calls concurrently against port 9334.

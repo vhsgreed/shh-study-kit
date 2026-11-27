@@ -647,6 +647,28 @@ def _relax_samesite(p):
 
 
 def open_login():
+    """Bring the library up and get it signed in, using ~/.secrets/KOHA_CREDENTIALS.
+
+    The first version of this only opened the window and told the caller to sign in by hand, even
+    when usable credentials were sitting on disk: on 2026-11-27 that sent a whole session chasing a
+    human sign-in that the tooling could do itself. It now tries the real login first and falls back
+    to the open-window instruction only when the credentials are missing or the library refuses.
+    """
+    try:
+        acct = loans(timeout=25)
+        if acct.get('logged_in'):
+            return {'url': USER, 'signed_in': True, 'user': acct.get('user'),
+                    'checkouts': acct.get('checkouts_count'), 'via': 'credentials'}
+    except KohaError as e:
+        reason = str(e)[:200]
+    except Exception as e:  # noqa: BLE001
+        reason = f'{type(e).__name__}: {e}'[:200]
+    else:
+        reason = 'login did not reach the account page'
+    return _open_window(reason)
+
+
+def _open_window(reason=''):
     """Bring the proxied Chrome to the library account page and leave it there.
 
     The one-time case: a human signs in ("Log in using your SHH account" or the library
@@ -659,10 +681,18 @@ def open_login():
         relaxed = _relax_samesite(p)
         state = p.eval("!!document.querySelector('#checkouts_table, #user_summary')")
         return {'url': USER, 'signed_in': bool(state), 'cookies_relaxed': relaxed,
-                'next': None if state else 'sign in in the open window, then run koha_wait_login'}
+                'credentials_login_failed': reason or None,
+                'next': None if state else ('sign in in the open window, then run koha_wait_login'
+                                            ' (credentials in ~/.secrets/KOHA_CREDENTIALS did not work)')}
 
 
 def wait_for_login(timeout=300):
+    """Poll until a human finishes a sign-in in the open window.
+
+    Superseded by open_login()/loans() for the normal case: those log in from the credentials file.
+    Keep this only for the one-off (new library account, changed pinkod). A dropped CDP socket used
+    to surface as a raw ConnectionClosedError, so it is reported in plain words instead.
+    """
     """Wait until the library account page shows a signed-in session.
 
     For the one-time case: the human signs in by hand in the proxied Chrome window
