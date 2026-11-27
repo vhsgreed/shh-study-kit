@@ -114,7 +114,16 @@ printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}' \
     the label. A blank is a textbox named "Fråga tom 1 av 1"; fill, then Tab. Answers save
     server-side as you go (they survive a reload). Answer by label text, never index: the order
     is shuffled per attempt. `quiz` uses Playwright `connect_over_cdp` on the agent Chrome, run on
-    a private thread because the MCP server already owns an event loop.
+    a private thread because the MCP server already owns an event loop.22. **Canvas caps a student access token at 30 days, and the token is the only machine route in.**
+    `POST /api/v1/users/self/tokens` answers "Expiration date cannot be more than 30 days in the
+    future" for anything longer, so any rotation schedule must be fortnightly, not yearly. The
+    settings page carries the CSRF token only in the `_csrf_token` cookie; there is no
+    `<meta name="csrf-token">` there, and looking for one reads as "not signed in" on a perfectly
+    good session. The response's value key is `visible_token`. `unitoolkit token action=status|
+    create|verify` does the whole thing and writes ~/.secrets/CANVAS_TOKEN (0600) plus a `.meta.json`
+    with dates only; `scripts/rotate_canvas_token.py` runs from cron twice a week and rotates when
+    14 days or fewer remain.
+
 21. **Ladok is lärosäte-scoped, and one login opens every lärosäte.** Every studentwebb call goes to
     `/student/proxy/<id>/` where the id is the lärosäte (38 = Sophiahemmet, 28 = Karolinska
     Institutet). The SPA switches context through `/student/app/studentwebb/byt-larosate/<id>`, and

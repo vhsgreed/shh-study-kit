@@ -61,7 +61,7 @@ The full registry, for when the core is not enough:
 | `page url=` | browser | rendered text of any walled page |
 | `fetch url= origin=` | browser | JSON from internal APIs with the site's cookies |
 | `sharepoint_download share_url= out=` | browser | file from a SharePoint share link |
-| `quiz action= url= position= choice= text= confirm=` | browser (school sign-in) + `playwright` extra | Canvas **New Quizzes** (self-correcting tests): `state` (question N of M, type, stem with `___` for blanks, options with checked flags, unanswered list), `answer` (`choice=` label substring, `a|b|c` sets a multiple-answer question to exactly that set; `text=` fills a blank; returns the question read back), `submit confirm=true` (irreversible), `close`. `position=N` jumps there first |
+| `token action= days=` | token file + browser | Canvas access token: `status` (valid? days left), `create` (mint through the signed-in browser, verify, install; Canvas caps at 30 days), `verify`. Writes ~/.secrets/CANVAS_TOKEN, never prints the value |
 | `onedrive action= path= query= name= drive_id= item_id= out=` | browser (school sign-in) | own OneDrive and "Shared with me" in the school's Office 365, read only: `status`, `ls`, `shared` (name/owner filter), `recent`, `search`, `download` (never overwrites). A classmate's shared doc downloads from *their* drive by `drive_id`+`item_id`; no app registration needed |
 | `programme` | browser | all 21 SHH nursing courses, kursplan + litteraturlista on disk |
 | `timeedit url=` | none | bookings from a TimeEdit link |

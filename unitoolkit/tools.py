@@ -326,6 +326,25 @@ def quiz(action, url=None, position=None, choice=None, text=None, confirm=False)
     return {"error": "unknown action %r: state|answer|submit|close" % action}
 
 
+# ---------------------------------------------------------- Canvas token
+
+@tool("token", "Canvas access token: status (installed? accepted by Canvas? days left), create "
+      "(mint a new one through the signed-in browser, verify it, install it; days=90 default) and "
+      "verify. The value is written to ~/.secrets/CANVAS_TOKEN with 0600 and is never printed.",
+      {"action": S, "days": I}, ["action"])
+def token(action, days=90):
+    from . import canvastoken
+    if action == "status":
+        return canvastoken.status()
+    if action == "create":
+        return canvastoken.create(days=days)
+    if action == "verify":
+        return canvastoken.verify()
+    if action == "needs":
+        return {"needs_rotation": canvastoken.needs_rotation()}
+    return {"error": "unknown action %r: status|create|verify|needs" % action}
+
+
 # ---------------------------------------------------------- Course search
 
 @tool("search", "Full-text search inside one course: pages, assignments with rubrics, "
